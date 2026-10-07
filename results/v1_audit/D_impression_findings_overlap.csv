@@ -1,0 +1,3 @@
+split,n_impression_reports,n_findings_reports,reports_in_both,identical_reference_text_in_both,identical_reference_any_report
+5000_seed0_clean,4666,4667,4666,2548,2548
+clean_metric_subset_200,1741,1727,749,468,468

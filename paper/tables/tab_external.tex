@@ -1,0 +1,33 @@
+\begin{tabular}{lccccccc}
+\toprule
+ & \multicolumn{2}{c}{\textbf{Kendall $\tau$ with radiologists}} & \multicolumn{5}{c}{\textbf{This paper (mean of IU, MIMIC)}} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-8}
+\textbf{Scorer} & Task 1 & Task 2 & \textsc{Conf-R} & \textsc{Conf-P} & \textsc{Ctrl-0} & \textsc{Ctrl-2} & Mono.\ $\tau$ \\
+\midrule
+\multicolumn{8}{l}{\textit{Meaning-blind baselines}} \\
+Jaccard & 0.24 & 0.45 & 0.61 & 0.02 & 0.61 & 0.61 & 0.41 \\
+Token F1 & 0.24 & 0.41 & 0.62 & 0.02 & 0.62 & 0.62 & 0.46 \\
+\multicolumn{8}{l}{\textit{Lexical / embedding}} \\
+BLEU & 0.12 & 0.30 & 0.01 & 0.01 & 0.56 & 0.56 & 0.17 \\
+ROUGE-L & 0.21 & 0.40 & 0.00 & 0.01 & 0.57 & 0.57 & 0.36 \\
+BERTScore (DistilBERT) & 0.28 & 0.47 & 0.00 & 0.01 & 0.64 & 0.64 & 0.36 \\
+BERTScore (RoBERTa-L) & 0.22 & 0.44 & 0.01 & 0.01 & 0.67 & 0.70 & 0.56 \\
+BERTScore (DeBERTa-MNLI) & 0.22 & 0.44 & 0.02 & 0.03 & 0.80 & 0.81 & 0.74 \\
+\multicolumn{8}{l}{\textit{Clinical, non-LLM}} \\
+F1CheXbert & 0.08 & 0.16 & 0.51 & 0.50 & 0.52 & 0.52 & 0.00 \\
+Temporal F1 & 0.03 & 0.13 & 0.53 & 0.38 & 0.53 & 0.53 & 0.11 \\
+SRR-BERT & 0.09 & 0.21 & 0.61 & 0.48 & 0.61 & 0.61 & 0.36 \\
+RadGraph F1 & 0.36 & 0.37 & 0.30 & 0.05 & 0.57 & 0.58 & 0.16 \\
+RaTEScore & 0.35 & 0.46 & 0.62 & 0.14 & 0.67 & 0.66 & 0.48 \\
+RadCliQ-v1 & 0.31 & 0.49 & 0.09 & 0.03 & 0.71 & 0.71 & 0.58 \\
+\multicolumn{8}{l}{\textit{LLM-based metrics}} \\
+GREEN & 0.37 & 0.39 & 0.72 & 0.67 & 0.84 & 0.76 & 0.77 \\
+CRIMSON & 0.26 & -- & 0.81 & 0.82 & 0.82 & 0.82 & 0.88 \\
+\multicolumn{8}{l}{\textit{LLM judges (rubric prompt)}} \\
+gpt-oss-20b & 0.38 & -- & 0.97 & 0.96 & 0.97 & 0.95 & 0.69 \\
+\midrule
+$\rho$ with Task 1, all scorers ($n{=}16$) & & & 0.41 & 0.29 & 0.72 & 0.66 & 0.56 \\
+$\rho$ with Task 2, all scorers ($n{=}14$) & & & -0.16 & -0.37 & 0.66 & 0.67 & 0.62 \\
+$\rho$ with Task 1, without judges ($n{=}15$) & & & 0.28 & 0.14 & 0.66 & 0.59 & 0.52 \\
+\bottomrule
+\end{tabular}

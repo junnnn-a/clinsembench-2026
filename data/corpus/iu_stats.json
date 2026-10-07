@@ -1,0 +1,20 @@
+{
+  "findings": {
+    "n_sections": 3424,
+    "n_reports": 3424,
+    "words_mean": 31.7,
+    "sent_mean": 4.65,
+    "ge3_sent_rate": 0.969,
+    "any_deid_rate": 0.434,
+    "ge3_clean_sent_rate": 0.902
+  },
+  "impression": {
+    "n_sections": 3817,
+    "n_reports": 3817,
+    "words_mean": 10.9,
+    "sent_mean": 1.76,
+    "ge3_sent_rate": 0.181,
+    "any_deid_rate": 0.176,
+    "ge3_clean_sent_rate": 0.14
+  }
+}

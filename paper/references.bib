@@ -1,0 +1,278 @@
+% 10/7: the six 2025-26 related-work entries, RadEval, SRR, FineRadScore, Libra (temporal F1 source per the RadEval README),
+% Gemma 3, Qwen3, Llama 3 and gpt-oss were checked against arXiv / ACL Anthology (see docs/13). Not checked: Khorasani 2003 (not cited).
+
+@inproceedings{papineni-etal-2002-bleu,
+  title = {{B}leu: a Method for Automatic Evaluation of Machine Translation},
+  author = {Papineni, Kishore and Roukos, Salim and Ward, Todd and Zhu, Wei-Jing},
+  booktitle = {Proceedings of the 40th Annual Meeting of the Association for Computational Linguistics},
+  year = {2002},
+  pages = {311--318}
+}
+
+@inproceedings{lin-2004-rouge,
+  title = {{ROUGE}: A Package for Automatic Evaluation of Summaries},
+  author = {Lin, Chin-Yew},
+  booktitle = {Text Summarization Branches Out},
+  year = {2004},
+  pages = {74--81}
+}
+
+@inproceedings{zhang-etal-2020-bertscore,
+  title = {{BERTS}core: Evaluating Text Generation with {BERT}},
+  author = {Zhang, Tianyi and Kishore, Varsha and Wu, Felix and Weinberger, Kilian Q. and Artzi, Yoav},
+  booktitle = {International Conference on Learning Representations},
+  year = {2020}
+}
+
+@inproceedings{smit-etal-2020-chexbert,
+  title = {Combining Automatic Labelers and Expert Annotations for Accurate Radiology Report Labeling Using {BERT}},
+  author = {Smit, Akshay and Jain, Saahil and Rajpurkar, Pranav and Pareek, Anuj and Ng, Andrew and Lungren, Matthew},
+  booktitle = {Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing},
+  year = {2020},
+  pages = {1500--1519}
+}
+
+@inproceedings{jain-etal-2021-radgraph,
+  title = {{R}ad{G}raph: Extracting Clinical Entities and Relations from Radiology Reports},
+  author = {Jain, Saahil and Agrawal, Ashwin and Saporta, Adriel and Truong, Steven QH and Duong, Du Nguyen and Bui, Tan and Chambon, Pierre and Zhang, Yuhao and Lungren, Matthew P. and Ng, Andrew Y. and Langlotz, Curtis P. and Rajpurkar, Pranav},
+  booktitle = {Thirty-fifth Conference on Neural Information Processing Systems Datasets and Benchmarks Track},
+  year = {2021}
+}
+
+@article{yu-etal-2023-evaluating,
+  title = {Evaluating progress in automatic chest {X}-ray radiology report generation},
+  author = {Yu, Feiyang and Endo, Mark and Krishnan, Rayan and Pan, Ian and Tsai, Andy and Reis, Eduardo Pontes and Fonseca, Eduardo Kaiser Ururahy Nunes and Lee, Henrique Min Ho and Abad, Zahra Shakeri Hossein and Ng, Andrew Y. and Langlotz, Curtis P. and Venugopal, Vasantha Kumar and Rajpurkar, Pranav},
+  journal = {Patterns},
+  volume = {4},
+  number = {9},
+  year = {2023}
+}
+
+@inproceedings{zhao-etal-2024-ratescore,
+  title = {{R}a{TES}core: A Metric for Radiology Report Generation},
+  author = {Zhao, Weike and Wu, Chaoyi and Zhang, Xiaoman and Zhang, Ya and Wang, Yanfeng and Xie, Weidi},
+  booktitle = {Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing},
+  year = {2024}
+}
+
+@inproceedings{ostmeier-etal-2024-green,
+  title = {{GREEN}: Generative Radiology Report Evaluation and Error Notation},
+  author = {Ostmeier, Sophie and Xu, Justin and Chen, Zhihong and Varma, Maya and Blankemeier, Louis and Bluethgen, Christian and Michalson, Arne Edward and Moseley, Michael and Langlotz, Curtis and Chaudhari, Akshay S. and Delbrouck, Jean-Benoit},
+  booktitle = {Findings of the Association for Computational Linguistics: EMNLP 2024},
+  year = {2024}
+}
+
+@article{johnson-etal-2019-mimiccxr,
+  title = {{MIMIC-CXR}, a de-identified publicly available database of chest radiographs with free-text reports},
+  author = {Johnson, Alistair E. W. and Pollard, Tom J. and Berkowitz, Seth J. and Greenbaum, Nathaniel R. and Lungren, Matthew P. and Deng, Chih-ying and Mark, Roger G. and Horng, Steven},
+  journal = {Scientific Data},
+  volume = {6},
+  number = {317},
+  year = {2019}
+}
+
+@article{demner-fushman-etal-2016-iu,
+  title = {Preparing a collection of radiology examinations for distribution and retrieval},
+  author = {Demner-Fushman, Dina and Kohli, Marc D. and Rosenman, Marc B. and Shooshan, Sonya E. and Rodriguez, Laritza and Antani, Sameer and Thoma, George R. and McDonald, Clement J.},
+  journal = {Journal of the American Medical Informatics Association},
+  volume = {23},
+  number = {2},
+  pages = {304--310},
+  year = {2016}
+}
+
+@inproceedings{ribeiro-etal-2020-beyond,
+  title = {Beyond Accuracy: Behavioral Testing of {NLP} Models with {C}heck{L}ist},
+  author = {Ribeiro, Marco Tulio and Wu, Tongshuang and Guestrin, Carlos and Singh, Sameer},
+  booktitle = {Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics},
+  year = {2020},
+  pages = {4902--4912}
+}
+
+@inproceedings{gururangan-etal-2018-annotation,
+  title = {Annotation Artifacts in Natural Language Inference Data},
+  author = {Gururangan, Suchin and Swayamdipta, Swabha and Levy, Omer and Schwartz, Roy and Bowman, Samuel and Smith, Noah A.},
+  booktitle = {Proceedings of the 2018 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, Volume 2 (Short Papers)},
+  year = {2018},
+  pages = {107--112}
+}
+
+@inproceedings{mccoy-etal-2019-right,
+  title = {Right for the Wrong Reasons: Diagnosing Syntactic Heuristics in Natural Language Inference},
+  author = {McCoy, Tom and Pavlick, Ellie and Linzen, Tal},
+  booktitle = {Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics},
+  year = {2019},
+  pages = {3428--3448}
+}
+
+@inproceedings{gardner-etal-2020-evaluating,
+  title = {Evaluating Models' Local Decision Boundaries via Contrast Sets},
+  author = {Gardner, Matt and Artzi, Yoav and Basmov, Victoria and Berant, Jonathan and Bogin, Ben and Chen, Sihao and Dasigi, Pradeep and Dua, Dheeru and Elazar, Yanai and Gottumukkala, Ananth and others},
+  booktitle = {Findings of the Association for Computational Linguistics: EMNLP 2020},
+  year = {2020},
+  pages = {1307--1323}
+}
+
+@inproceedings{kaushik-etal-2020-learning,
+  title = {Learning the Difference that Makes a Difference with Counterfactually-Augmented Data},
+  author = {Kaushik, Divyansh and Hovy, Eduard and Lipton, Zachary C.},
+  booktitle = {International Conference on Learning Representations},
+  year = {2020}
+}
+
+@inproceedings{sai-etal-2021-perturbation,
+  title = {Perturbation {C}heck{L}ists for Evaluating {NLG} Evaluation Metrics},
+  author = {Sai, Ananya B. and Dixit, Tanay and Sheth, Dhanya Yaswanth and Mohan, Sreyas and Khapra, Mitesh M.},
+  booktitle = {Proceedings of the 2021 Conference on Empirical Methods in Natural Language Processing},
+  year = {2021},
+  pages = {7219--7234}
+}
+
+@inproceedings{maynez-etal-2020-faithfulness,
+  title = {On Faithfulness and Factuality in Abstractive Summarization},
+  author = {Maynez, Joshua and Narayan, Shashi and Bohnet, Bernd and McDonald, Ryan},
+  booktitle = {Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics},
+  year = {2020},
+  pages = {1906--1919}
+}
+
+@article{khorasani-etal-2003-certainty,
+  title = {Is terminology used effectively to convey diagnostic certainty in radiology reports?},
+  author = {Khorasani, Ramin and Bates, David W. and Teeger, Sharlene and Rothschild, Jeffrey M. and Adams, Douglass F. and Seltzer, Steven E.},
+  journal = {Academic Radiology},
+  volume = {10},
+  number = {6},
+  pages = {685--688},
+  year = {2003}
+}
+
+@inproceedings{he-etal-2021-deberta,
+  title = {{DeBERTa}: Decoding-enhanced {BERT} with Disentangled Attention},
+  author = {He, Pengcheng and Liu, Xiaodong and Gao, Jianfeng and Chen, Weizhu},
+  booktitle = {International Conference on Learning Representations},
+  year = {2021}
+}
+
+@article{liu-etal-2019-roberta,
+  title = {{RoBERTa}: A Robustly Optimized {BERT} Pretraining Approach},
+  author = {Liu, Yinhan and Ott, Myle and Goyal, Naman and Du, Jingfei and Joshi, Mandar and Chen, Danqi and Levy, Omer and Lewis, Mike and Zettlemoyer, Luke and Stoyanov, Veselin},
+  journal = {arXiv preprint arXiv:1907.11692},
+  year = {2019}
+}
+
+@article{sanh-etal-2019-distilbert,
+  title = {{DistilBERT}, a distilled version of {BERT}: smaller, faster, cheaper and lighter},
+  author = {Sanh, Victor and Debut, Lysandre and Chaumond, Julien and Wolf, Thomas},
+  journal = {arXiv preprint arXiv:1910.01108},
+  year = {2019}
+}
+
+@inproceedings{kwon-etal-2023-vllm,
+  title = {Efficient Memory Management for Large Language Model Serving with {PagedAttention}},
+  author = {Kwon, Woosuk and Li, Zhuohan and Zhuang, Siyuan and Sheng, Ying and Zheng, Lianmin and Yu, Cody Hao and Gonzalez, Joseph E. and Zhang, Hao and Stoica, Ion},
+  booktitle = {Proceedings of the 29th Symposium on Operating Systems Principles},
+  year = {2023}
+}
+
+@inproceedings{zhang-etal-2025-libra,
+  title = {Libra: Leveraging Temporal Images for Biomedical Radiology Analysis},
+  author = {Zhang, Xi and Meng, Zaiqiao and Lever, Jake and Ho, Edmond S. L.},
+  booktitle = {Findings of the Association for Computational Linguistics: ACL 2025},
+  pages = {17275--17303},
+  year = {2025}
+}
+
+@inproceedings{delbrouck-etal-2025-srr,
+  title = {Automated Structured Radiology Report Generation},
+  author = {Delbrouck, Jean-Benoit and Xu, Justin and Moll, Johannes and Thomas, Alois and Chen, Zhihong and Ostmeier, Sophie and Azhar, Asfandyar and Li, Kelvin Zhenghao and Johnston, Andrew and Bluethgen, Christian and Reis, Eduardo and Muneer, Mohamed and Varma, Maya and Langlotz, Curtis},
+  booktitle = {Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics},
+  year = {2025}
+}
+
+@inproceedings{xu-etal-2025-radeval,
+  title = {{RadEval}: A framework for radiology text evaluation},
+  author = {Xu, Justin and Zhang, Xi and Abderezaei, Javid and Bauml, Julie and Boodoo, Roger and Haghighi, Fatemeh and Ganjizadeh, Ali and Brattain, Eric and Van Veen, Dave and Meng, Zaiqiao and Eyre, David and Delbrouck, Jean-Benoit},
+  booktitle = {Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing: System Demonstrations},
+  pages = {546--557},
+  year = {2025}
+}
+
+@inproceedings{huang-etal-2024-fineradscore,
+  title = {{FineRadScore}: A Radiology Report Line-by-Line Evaluation Technique Generating Corrections with Severity Scores},
+  author = {Huang, Alyssa and Banerjee, Oishi and Wu, Kay and Reis, Eduardo Pontes and Rajpurkar, Pranav},
+  booktitle = {Proceedings of the 9th Machine Learning for Healthcare Conference},
+  series = {Proceedings of Machine Learning Research},
+  volume = {252},
+  year = {2024}
+}
+
+@inproceedings{reevalmed-2025,
+  title = {{ReEvalMed}: Rethinking Medical Report Evaluation by Aligning Metrics with Real-World Clinical Judgment},
+  author = {Li, Ruochen and Li, Jun and Jian, Bailiang and Yuan, Kun and Zhu, Youxiang},
+  booktitle = {Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing},
+  pages = {11823--11837},
+  year = {2025}
+}
+
+@misc{beyond-scalar-2026,
+  title = {Beyond Scalar Scores: Exploring {LLM}-based Metrics for Clinical Significance Evaluation in Radiology Reports},
+  author = {Lu, Qingyu and Li, Ruochen and Ding, Liang and Xia, Yufei and Zhu, Youxiang and Tao, Dacheng},
+  year = {2026},
+  howpublished = {arXiv preprint arXiv:2606.18797}
+}
+
+@misc{radsem-2026,
+  title = {{RadSEM}: A Finding-by-Finding Metric for Clinical Consistency in Radiology Reports},
+  author = {Yang, Zhenhong and Liu, Zhuoyun and Fei, Jintao and Tang, Wen and Quan, Shichao and Zhao, Jun and Xu, Jun},
+  year = {2026},
+  howpublished = {arXiv preprint arXiv:2606.17062}
+}
+
+@misc{crimson-2026,
+  title = {{CRIMSON}: A Clinically-Grounded {LLM}-Based Metric for Generative Radiology Report Evaluation},
+  author = {Baharoon, Mohammed and Heintz, Thibault and Raissi, Siavash and Alabbad, Mahmoud and Alhammad, Mona and AlOmaish, Hassan and Kim, Sung Eun and Banerjee, Oishi and Rajpurkar, Pranav},
+  year = {2026},
+  howpublished = {arXiv preprint arXiv:2603.06183}
+}
+
+@misc{reref-2026,
+  title = {Reporting Practice Matters: The Impact of Reference Choice on Chest {X}-ray Report Evaluation},
+  author = {Jeong, Daniel P. and Li, Charles Q. and Hosseiny, Hossein and Bhalla, Nitya M. and Uyar Morency, Fatma and Ravikumar, Pradeep and Lipton, Zachary C. and Oberst, Michael},
+  year = {2026},
+  howpublished = {arXiv preprint arXiv:2609.19093}
+}
+
+@misc{radot-2026,
+  title = {{RadOT-Eval}: Auditable Structured-Evidence Transport for Radiology Report Evaluation},
+  author = {Liu, Weixin and Xiong, Juming and Li, Yang and Song, Qingyuan and Rose, Susannah and Kantarcioglu, Murat and Malin, Bradley and Yin, Zhijun},
+  year = {2026},
+  howpublished = {arXiv preprint arXiv:2606.08769}
+}
+
+@misc{gemma3-2025,
+  title = {Gemma 3 Technical Report},
+  author = {{Gemma Team}},
+  year = {2025},
+  howpublished = {arXiv preprint arXiv:2503.19786}
+}
+
+@misc{qwen3-2025,
+  title = {Qwen3 Technical Report},
+  author = {Yang, An and Li, Anfeng and Yang, Baosong and Zhang, Beichen and Hui, Binyuan and Zheng, Bo and others},
+  year = {2025},
+  howpublished = {arXiv preprint arXiv:2505.09388}
+}
+
+@misc{llama3-2024,
+  title = {The {L}lama 3 Herd of Models},
+  author = {Grattafiori, Aaron and Dubey, Abhimanyu and Jauhri, Abhinav and Pandey, Abhinav and Kadian, Abhishek and Al-Dahle, Ahmad and others},
+  year = {2024},
+  howpublished = {arXiv preprint arXiv:2407.21783}
+}
+
+@misc{gptoss-2025,
+  title = {gpt-oss-120b \& gpt-oss-20b Model Card},
+  author = {{OpenAI}},
+  year = {2025},
+  howpublished = {arXiv preprint arXiv:2508.10925}
+}

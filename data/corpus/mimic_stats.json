@@ -1,0 +1,29 @@
+{
+  "parse": {
+    "reports": 172171,
+    "with_findings": 98757,
+    "with_impression": 134279,
+    "both": 72233,
+    "identical_dropped": 83
+  },
+  "sections": {
+    "findings": {
+      "n_sections": 98618,
+      "n_reports": 98618,
+      "words_mean": 55.8,
+      "sent_mean": 5.59,
+      "ge3_sent_rate": 0.951,
+      "any_deid_rate": 0.227,
+      "ge3_clean_sent_rate": 0.921
+    },
+    "impression": {
+      "n_sections": 133679,
+      "n_reports": 133679,
+      "words_mean": 34.2,
+      "sent_mean": 3.33,
+      "ge3_sent_rate": 0.541,
+      "any_deid_rate": 0.302,
+      "ge3_clean_sent_rate": 0.477
+    }
+  }
+}

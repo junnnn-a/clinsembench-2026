@@ -1,0 +1,26 @@
+\begin{tabular}{lccccccc}
+\toprule
+ & \multicolumn{4}{c}{\textbf{Fixed-surface ladder}} & \multicolumn{2}{c}{\textbf{Growing-surface ladder}} & \textbf{3 benign} \\
+\cmidrule(lr){2-5}\cmidrule(lr){6-7}
+\textbf{Metric} & $\tau$ & $0{\to}1$ & $1{\to}2$ & $2{\to}3$ & $1{\to}2$ & $2{\to}3$ & \textbf{$>$ 1 error} \\
+\midrule
+\multicolumn{8}{l}{\textit{Meaning-blind baselines}} \\
+Jaccard & 0.41 & 0.60 & 0.61 & 0.63 & 0.99 & 0.99 & 0.98 \\
+\multicolumn{8}{l}{\textit{Lexical / embedding}} \\
+BLEU & 0.17 & 0.53 & 0.53 & 0.55 & 1.00 & 1.00 & 1.00 \\
+BERTScore (DistilBERT) & 0.36 & 0.72 & 0.66 & 0.65 & 1.00 & 1.00 & 1.00 \\
+BERTScore (DeBERTa-MNLI) & 0.74 & 0.81 & 0.83 & 0.79 & 1.00 & 1.00 & 0.85 \\
+\multicolumn{8}{l}{\textit{Clinical, non-LLM}} \\
+RadGraph F1 & 0.16 & 0.57 & 0.55 & 0.49 & 0.95 & 0.96 & 0.96 \\
+RadCliQ-v1 & 0.58 & 0.74 & 0.77 & 0.71 & 1.00 & 0.99 & 0.97 \\
+\multicolumn{8}{l}{\textit{LLM-based metrics}} \\
+GREEN & 0.77 & 0.76 & 0.77 & 0.74 & 0.85 & 0.85 & 0.34 \\
+CRIMSON & 0.88 & 0.86 & 0.83 & 0.85 & 0.83 & 0.85 & 0.15 \\
+\multicolumn{8}{l}{\textit{LLM judges (rubric prompt)}} \\
+gpt-oss-20b & 0.69 & 0.96 & 0.52 & 0.56 & 0.55 & 0.53 & 0.04 \\
+gpt-oss-120b & 0.73 & 0.97 & 0.53 & 0.60 & 0.54 & 0.59 & 0.02 \\
+\multicolumn{8}{l}{\textit{LLM judges (errors prompt)}} \\
+gpt-oss-20b & 0.96 & 0.91 & 0.93 & 0.93 & 0.99 & 0.99 & 0.19 \\
+gpt-oss-120b & 0.98 & 0.96 & 0.97 & 0.97 & 0.99 & 0.99 & 0.06 \\
+\bottomrule
+\end{tabular}

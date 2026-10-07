@@ -1,0 +1,40 @@
+\begin{tabular}{lcccccccccccc}
+\toprule
+ & \multicolumn{6}{c}{\textbf{IU X-Ray} ($n{=}890$)} & \multicolumn{6}{c}{\textbf{MIMIC-CXR} ($n{=}1{,}050$)} \\
+\cmidrule(lr){2-7}\cmidrule(lr){8-13}
+ & \multicolumn{2}{c}{Confounded} & \multicolumn{2}{c}{Controlled} & \multicolumn{2}{c}{\textsc{Ctrl-0} detail} & \multicolumn{2}{c}{Confounded} & \multicolumn{2}{c}{Controlled} & \multicolumn{2}{c}{\textsc{Ctrl-0} detail} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}\cmidrule(lr){10-11}\cmidrule(lr){12-13}
+\textbf{Metric} & \textsc{R} & \textsc{P} & \textsc{0} & \textsc{2} & tie & strict & \textsc{R} & \textsc{P} & \textsc{0} & \textsc{2} & tie & strict \\
+\midrule
+\multicolumn{13}{l}{\textit{Meaning-blind baselines}} \\
+Jaccard & 0.63 & 0.03 & 0.63 & 0.62 & 0.54 & 0.50 & 0.59 & 0.01 & 0.59 & 0.59 & 0.50 & 0.50 \\
+Token F1 & 0.64 & 0.03 & 0.64$^{\circ}$ & 0.64 & 0.54 & 0.50 & 0.60 & 0.01 & 0.60 & 0.60 & 0.53 & 0.50 \\
+\addlinespace[2pt]
+\multicolumn{13}{l}{\textit{Lexical / embedding}} \\
+BLEU & 0.01 & 0.02 & 0.56$^{\downarrow}$ & 0.55 & 0.70 & 0.51 & 0.01 & 0.00 & 0.57$^{\downarrow}$ & 0.56 & 0.63 & 0.50 \\
+ROUGE-L & 0.00 & 0.02 & 0.61$^{\downarrow}$ & 0.61 & 0.61 & 0.50 & 0.00 & 0.00 & 0.53$^{\downarrow}$ & 0.53 & 0.65 & 0.50 \\
+BERTScore (DistilBERT) & 0.00 & 0.02 & 0.66$^{\circ}$ & 0.66 & 0.00 & 0.68 & 0.00 & 0.00 & 0.63 & 0.62 & 0.00 & 0.65 \\
+BERTScore (RoBERTa-L) & 0.01 & 0.02 & 0.67 & 0.69 & 0.00 & 0.69 & 0.00 & 0.01 & 0.66 & 0.70 & 0.00 & 0.67 \\
+BERTScore (DeBERTa-MNLI) & 0.03 & 0.04 & 0.79 & 0.80 & 0.00 & 0.81 & 0.02 & 0.02 & 0.81 & 0.82 & 0.00 & 0.85 \\
+\addlinespace[2pt]
+\multicolumn{13}{l}{\textit{Clinical, non-LLM}} \\
+F1CheXbert & 0.51 & 0.51 & 0.52$^{\downarrow}$ & 0.52 & 0.96 & 0.51 & 0.51 & 0.49 & 0.53$^{\downarrow}$ & 0.53 & 0.94 & 0.52 \\
+Temporal F1 & 0.52 & 0.44 & 0.52$^{\downarrow}$ & 0.52 & 0.96 & 0.52 & 0.54 & 0.33 & 0.54$^{\downarrow}$ & 0.54$^{\ast}$ & 0.89 & 0.57 \\
+SRR-BERT & 0.59 & 0.50 & 0.60$^{\downarrow}$ & 0.60 & 0.77 & 0.58 & 0.62 & 0.46 & 0.62 & 0.62 & 0.73 & 0.60 \\
+RadGraph F1 & 0.34 & 0.07 & 0.57$^{\downarrow}$ & 0.58 & 0.56 & 0.52 & 0.27 & 0.04 & 0.57$^{\circ}$ & 0.58 & 0.48 & 0.54 \\
+RaTEScore & 0.63 & 0.19 & 0.68 & 0.67 & 0.14 & 0.68 & 0.60 & 0.08 & 0.66 & 0.65 & 0.19 & 0.65 \\
+RadCliQ-v1 & 0.09 & 0.05 & 0.72 & 0.73 & 0.00 & 0.71 & 0.09 & 0.02 & 0.69 & 0.69 & 0.00 & 0.66 \\
+\addlinespace[2pt]
+\multicolumn{13}{l}{\textit{LLM-based metrics}} \\
+GREEN & 0.75 & 0.72 & 0.85 & 0.76$^{\ast}$ & 0.28 & 0.88 & 0.68 & 0.63 & 0.83 & 0.75$^{\ast}$ & 0.32 & 0.82 \\
+CRIMSON & 0.81 & 0.81 & 0.81 & 0.80 & 0.38 & 0.80 & 0.82 & 0.83 & 0.84 & 0.83 & 0.32 & 0.85 \\
+\addlinespace[2pt]
+\multicolumn{13}{l}{\textit{LLM judges (rubric prompt)}} \\
+Llama-3.1-8B & 0.68 & 0.77 & 0.78 & 0.75$^{\ast}$ & 0.43 & 0.75 & 0.62 & 0.72 & 0.74 & 0.72$^{\ast}$ & 0.49 & 0.70 \\
+Gemma-3-27B & 0.93 & 0.96 & 0.92 & 0.93 & 0.16 & 0.93 & 0.93 & 0.96 & 0.90 & 0.91 & 0.17 & 0.89 \\
+Qwen3-32B & 0.96 & 0.96 & 0.93 & 0.91$^{\ast}$ & 0.11 & 0.94 & 0.93 & 0.95 & 0.87 & 0.89 & 0.23 & 0.86 \\
+Qwen3-32B (thinking) & 0.97 & 0.97 & 0.97 & 0.97 & 0.04 & 0.98 & 0.96 & 0.98 & 0.96 & 0.97 & 0.06 & 0.97 \\
+gpt-oss-20b & 0.97 & 0.96 & 0.97 & 0.96 & 0.06 & 0.96 & 0.97 & 0.96 & 0.97 & 0.95$^{\ast}$ & 0.05 & 0.95 \\
+gpt-oss-120b & 0.96 & 0.97 & 0.96 & 0.97 & 0.07 & 0.98 & 0.96 & 0.96 & 0.96 & 0.96 & 0.07 & 0.97 \\
+\bottomrule
+\end{tabular}

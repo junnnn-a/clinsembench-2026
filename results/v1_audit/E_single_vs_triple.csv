@@ -1,0 +1,3 @@
+n_labels,n_items,match_rule_incl_uncertain,uncertain_rate
+1,300,0.86,0.04
+3,180,0.9833333333333333,0.005555555555555556

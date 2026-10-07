@@ -1,0 +1,13 @@
+section,metric,spearman_penalty_vs_edit_tokens
+impression,green,-0.1387706564680457
+impression,ratescore,-0.030349890011581525
+impression,radgraph,0.21887762711543968
+impression,temporal,0.11498103304860738
+impression,f1chexbert,0.3533960592255426
+impression,bertscore,0.810041614955966
+findings,green,-0.1669889673920621
+findings,ratescore,-0.05194162090262055
+findings,radgraph,0.2894559086267001
+findings,temporal,0.08453623891927785
+findings,f1chexbert,0.3767530244931195
+findings,bertscore,0.8648075044531246

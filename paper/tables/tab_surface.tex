@@ -1,0 +1,15 @@
+\begin{tabular}{lrccc}
+\toprule
+\textbf{Benchmark / comparison} & \textbf{$n$} & \textbf{Surface-only} & \textbf{Jaccard} & \textbf{\#Edit tok.} \\
+\midrule
+ClinSemBench-v1, \textit{Impression} (rule labels) & 2,400 & 0.92 & 0.85 & 0.19 \\
+ClinSemBench-v1, \textit{Findings} (rule labels) & 2,400 & 0.96 & 0.89 & 0.16 \\
+ClinSemBench-v1, validation set (human labels) & 467 & 0.83 & 0.81 & 0.24 \\
+RaTE-Eval, synthetic task (synonym vs.\ opposite)$^{\dagger}$ & 1,478 & 0.89 & 0.17 & 0.21 \\
+\midrule
+Ours, \textsc{Conf-R}: C0 vs.\ P1 & 1,780/2,100 & 1.00/1.00 & 0.59/0.56 & 0.00/0.00 \\
+Ours, \textsc{Conf-P}: C0 vs.\ P2 & 1,780/2,100 & 0.98/1.00 & 0.05/0.01 & 0.02/0.00 \\
+Ours, \textsc{Ctrl-0}: C0 vs.\ P0 & 1,780/2,100 & 0.64/0.62 & 0.59/0.56 & 0.51/0.51 \\
+Ours, \textsc{Ctrl-2}: C2 vs.\ P2 & 1,780/2,100 & 0.54/0.52 & 0.52/0.51 & 0.50/0.50 \\
+\bottomrule
+\end{tabular}

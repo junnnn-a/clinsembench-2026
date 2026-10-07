@@ -1,0 +1,27 @@
+\begin{tabular}{lccccc}
+\toprule
+ & & \multicolumn{2}{c}{\textbf{\textsc{Ctrl-2}}} & \multicolumn{2}{c}{\textbf{Drop \textsc{Ctrl-0} $-$ \textsc{Ctrl-2}}} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}
+\textbf{Scorer} & \textsc{Ctrl-0} & Qwen2.5 & Llama-3.1 + guard & Qwen2.5 & Llama-3.1 + guard \\
+\midrule
+\multicolumn{6}{l}{\textit{Meaning-blind baselines}} \\
+Jaccard & 0.60 & 0.59 & 0.59 & 0.008 [-0.007, 0.021] & 0.008 [-0.008, 0.024] \\
+Token F1 & 0.61 & 0.62 & 0.62 & -0.002 [-0.019, 0.015] & -0.003 [-0.019, 0.014] \\
+\multicolumn{6}{l}{\textit{Lexical / embedding}} \\
+BLEU & 0.55 & 0.54 & 0.55 & 0.008 [-0.010, 0.028] & 0.002 [-0.015, 0.020] \\
+ROUGE-L & 0.58 & 0.58 & 0.58 & -0.002 [-0.005, 0.000] & -0.002 [-0.005, 0.000] \\
+BERTScore (DistilBERT) & 0.65 & 0.64 & 0.64 & 0.007 [-0.023, 0.040] & 0.010 [-0.023, 0.044] \\
+BERTScore (RoBERTa-L) & 0.66 & 0.70 & 0.68 & -0.033 [-0.071, 0.003] & -0.013 [-0.054, 0.026] \\
+BERTScore (DeBERTa-MNLI) & 0.78 & 0.78 & 0.78 & 0.000 [-0.049, 0.049] & 0.000 [-0.039, 0.040] \\
+\multicolumn{6}{l}{\textit{Clinical, non-LLM}} \\
+F1CheXbert & 0.52 & 0.51 & 0.51 & 0.003 [0.000, 0.008] & 0.002 [-0.005, 0.008] \\
+Temporal F1 & 0.51 & 0.51 & 0.51 & 0.000 [0.000, 0.000] & 0.000 [0.000, 0.000] \\
+SRR-BERT & 0.60 & 0.60 & 0.60 & 0.000 [0.000, 0.000] & 0.000 [0.000, 0.000] \\
+RadGraph F1 & 0.56 & 0.57 & 0.53 & -0.007 [-0.050, 0.037] & 0.030 [-0.010, 0.069] \\
+RaTEScore & 0.65 & 0.65 & 0.65 & 0.007 [-0.014, 0.026] & 0.000 [-0.024, 0.023] \\
+RadCliQ-v1 & 0.71 & 0.70 & 0.70 & 0.013 [-0.027, 0.057] & 0.010 [-0.040, 0.056] \\
+\multicolumn{6}{l}{\textit{LLM-based metrics}} \\
+GREEN & 0.83 & 0.73 & 0.75 & 0.095 [0.057, 0.131] & 0.076 [0.041, 0.111] \\
+CRIMSON & 0.78 & 0.78 & 0.79 & 0.000 [-0.012, 0.013] & -0.013 [-0.024, -0.003] \\
+\bottomrule
+\end{tabular}

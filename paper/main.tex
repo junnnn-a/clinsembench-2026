@@ -1,0 +1,606 @@
+\documentclass[11pt]{article}
+\usepackage[review]{acl}
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+\usepackage{inconsolata}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xspace}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+
+\newcommand{\bench}{ClinSemBench\xspace}
+\newcommand{\Pc}{\textsc{p}\xspace}
+\newcommand{\Cc}{\textsc{c}\xspace}
+\newcommand{\ctrlz}{\textsc{Ctrl-0}\xspace}
+\newcommand{\ctrlo}{\textsc{Ctrl-1}\xspace}
+\newcommand{\ctrlt}{\textsc{Ctrl-2}\xspace}
+\newcommand{\confr}{\textsc{Conf-R}\xspace}
+\newcommand{\confp}{\textsc{Conf-P}\xspace}
+\newcommand{\tbd}[1]{\textcolor{red}{[TBD: #1]}}
+\newcommand{\chg}[1]{\textbf{#1}}
+
+\title{Surface or Semantics? Disentangling What Radiology Report Metrics Measure with Factorial Minimal Pairs}
+
+\author{Anonymous ACL submission}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Metrics for radiology report generation are increasingly validated with perturbation suites: a reference report is edited so that its meaning is either preserved or changed, and a good metric should penalise the second kind of edit more.
+We show that this protocol confounds meaning with surface distance.
+The two kinds of edit differ systematically in how much text they change, so the label can be predicted without reading the meaning: a classifier that sees only surface statistics reaches an AUROC of 0.89 on the public RaTE-Eval synthetic task and 0.92--0.96 on our own earlier suite (0.83 on its human labels).
+The direction of the confound depends on how the meaning-preserving edits were built, so the same metric can look sensitive in one suite and inverted in another.
+\bench is a factorial minimal-pair benchmark over IU X-Ray and MIMIC-CXR: each target sentence receives a meaning-preserving and a meaning-changing edit at the same position with matched surface form, crossed with three levels of surrounding surface noise.
+Controlling the surface changes the conclusions about meaning sensitivity.
+An apparent ``reversal'' of BERTScore disappears (paired accuracy 0.00 $\rightarrow$ 0.63--0.66); F1CheXbert and a temporal metric tie on 89--96\% of matched pairs and RadGraph F1 stays near chance (0.53--0.54) even where token overlap is exactly equal; GREEN loses 8--9 points when the surrounding sentences are paraphrased while CRIMSON does not.
+Paraphrasing the context costs RadGraph F1 as much as 18 matched meaning changes and BERTScore more than 50.
+In a monotonicity test with fixed surface, BLEU and RadGraph F1, perfectly monotone under the usual ``more errors, more edits'' ladder, drop to Kendall $\tau<0.2$.
+Reasoning LLM judges reach 0.95--0.97 and, when asked to enumerate discrepancies rather than give a verdict, are also the most monotone scorers; smaller and non-reasoning judges miss certainty changes under paraphrase and are prompt-sensitive.
+We recommend reporting a meaning-blind baseline and a surface-only predictability score with every perturbation-based meta-evaluation.
+\end{abstract}
+
+\section{Introduction}
+
+Automatic radiology report generation is evaluated almost entirely by comparing a generated report with a reference, and the metric used for that comparison decides which systems appear to make progress.
+A metric should ignore harmless rewording and react to statements that differ: ``No pleural effusion'' and ``Pleural effusion is not seen'' say the same thing, while ``Small left pleural effusion'' and ``Small right pleural effusion'' do not.
+
+A growing line of work tests metrics for exactly this property with \emph{perturbation suites}.
+A reference report is edited in a controlled way; some edits are meant to preserve its meaning and some to change it; a metric is credited when it penalises the meaning-changing edits more. The idea comes from behavioural testing \citep{ribeiro-etal-2020-beyond,sai-etal-2021-perturbation} and is used in dedicated meta-evaluations \citep{reevalmed-2025} and in stress tests shipped with new metrics \citep{zhao-etal-2024-ratescore,radsem-2026,radot-2026}.
+
+This paper starts from an uncomfortable observation about our own earlier suite of this kind.
+A token-set overlap score (Jaccard), which has no access to meaning, separated its meaning-changing from its meaning-preserving candidates as well as the best LLM-based metric did, on rule labels and on human labels alike.
+The meaning-preserving edits (reformatting, sentence reordering) rewrote many tokens but left the bag of tokens intact; the meaning-changing edits replaced one word.
+A metric could earn a high score by counting changed tokens, and one that is proportional to edit size, such as BERTScore, appeared ``directionally reversed''.
+
+The problem is not specific to that suite.
+When meaning-preserving candidates are produced by free rewriting and meaning-changing ones by local error injection, the confound points the other way: overlap-based metrics now score the erroneous candidates \emph{higher}.
+In the public RaTE-Eval synthetic task \citep{zhao-etal-2024-ratescore}, synonym rewrites edit twice as many tokens as ``opposite'' rewrites, and token overlap prefers the opposite in 85\% of triplets; the same pattern is visible in the per-metric averages of ReEvalMed, whose authors attribute it to the larger surface changes of their benign rewrites \citep{reevalmed-2025}.
+The same metric can thus look sensitive or inverted depending on how the benign edits were constructed (\S\ref{sec:diagnosis}).
+
+We address the confound by design.
+\bench builds, for one target sentence of a report section, a meaning-preserving edit (\Pc) and a meaning-changing edit (\Cc) \emph{at the same position and with the same surface operation}, so that the two candidates are equally far from the reference on the surface and differ only in the meaning slot (Figure~\ref{fig:design}).
+This pair is then crossed with three levels of surface noise in the rest of the section: none, sentence reordering, and paraphrase of all other sentences.
+Comparing \Cc with \Pc inside one level gives a controlled test; comparing a minimally edited \Cc with a heavily rewritten \Pc reproduces, with identical targets, the confounds of existing suites in both directions.
+
+Our contributions are:
+\begin{enumerate}[leftmargin=*,noitemsep]
+\item \textbf{A diagnosis.} Labels of perturbation suites, including a public one, are predictable from surface statistics alone, and the direction of the resulting confound depends on the construction of the benign edits. We propose two cheap controls: a meaning-blind baseline and a surface-only predictability score.
+\item \textbf{A design.} A factorial minimal-pair benchmark on two chest X-ray corpora (1,940 targets, seven edit types, six cells per target) with position- and shape-matched edits, plus a fixed-surface monotonicity set.
+\item \textbf{Findings that change under control.} That metrics react to meaning-preserving rewording is known \citep{reref-2026}; we ask what happens to conclusions about \emph{meaning} sensitivity once surface is held fixed. For 15 metrics and six LLM judges, the BERTScore reversal and the apparent monotonicity of overlap and graph metrics do not survive; other findings emerge only under control: label- and graph-based metrics that are blind to most matched edits, GREEN's loss of meaning sensitivity under paraphrase, and the dependence of judge behaviour on the prompt.
+\end{enumerate}
+
+\begin{figure*}[t]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{p{0.085\textwidth}p{0.42\textwidth}p{0.42\textwidth}}
+\toprule
+ & \textbf{\Pc: meaning-preserving} & \textbf{\Cc: meaning-changing} \\
+\midrule
+\textbf{S0} minimal &
+\textbf{P0}\; The heart is normal in size. [\dots] No pneumothorax or pleural effusion. Patchy \chg{right-sided} lower lung opacification is noted. &
+\textbf{C0}\; The heart is normal in size. [\dots] No pneumothorax or pleural effusion. Patchy \chg{left-sided} lower lung opacification is noted. \\
+\addlinespace
+\textbf{S1} reorder &
+\textbf{P1}\; Patchy \chg{right-sided} lower lung opacification is noted. The heart is normal in size. [\dots] No pneumothorax or pleural effusion. &
+\textbf{C1}\; Patchy \chg{left-sided} lower lung opacification is noted. The heart is normal in size. [\dots] No pneumothorax or pleural effusion. \\
+\addlinespace
+\textbf{S2} paraphrase &
+\textbf{P2}\; The size of the heart is within normal limits. [\dots] No pleural effusion or pneumothorax. Patchy \chg{right-sided} lower lung opacification is noted. &
+\textbf{C2}\; The size of the heart is within normal limits. [\dots] No pleural effusion or pneumothorax. Patchy \chg{left-sided} lower lung opacification is noted. \\
+\bottomrule
+\end{tabular}
+\caption{The six cells built from one target (IU X-Ray; \emph{laterality}). The reference is P0 with ``\chg{right}'' in place of ``\chg{right-sided}''; one context sentence is omitted here ([\dots]). Within a row, \Pc and \Cc apply the same surface operation at the same position and differ only in the side. \emph{Controlled} comparisons stay within a row (\ctrlz: C0 vs.\ P0; \ctrlo; \ctrlt). \emph{Confounded} comparisons cross rows: \confr (C0 vs.\ P1) mimics suites whose benign edits reorder or reformat text; \confp (C0 vs.\ P2) mimics suites whose benign edits are free rewrites.}
+\label{fig:design}
+\end{figure*}
+
+\section{Related Work}
+
+\paragraph{Metrics for radiology reports.}
+Beyond BLEU \citep{papineni-etal-2002-bleu}, ROUGE \citep{lin-2004-rouge} and BERTScore \citep{zhang-etal-2020-bertscore}, the field uses label-based scores built on CheXbert \citep{smit-etal-2020-chexbert}, entity--relation overlap from RadGraph \citep{jain-etal-2021-radgraph}, the composite RadCliQ \citep{yu-etal-2023-evaluating}, RaTEScore \citep{zhao-etal-2024-ratescore}, SRR-BERT \citep{delbrouck-etal-2025-srr}, temporal F1 \citep{zhang-etal-2025-libra}, and LLM-based metrics that enumerate errors: GREEN \citep{ostmeier-etal-2024-green}, FineRadScore \citep{huang-etal-2024-fineradscore}, CRIMSON \citep{crimson-2026}, and the finding-level RadSEM \citep{radsem-2026} and RadOT-Eval \citep{radot-2026}.
+
+\paragraph{Meta-evaluation with perturbations.}
+ReEvalMed \citep{reevalmed-2025} has an LLM rewrite reports along one aspect at a time, with clinician validation. Its authors observe that their insignificant rewrites involve larger surface changes than the significant ones, and even shorten the context of insignificant pairs on purpose so that overall similarity is not rewarded; the surface difference is thus recognised but not controlled or measured. \citet{beyond-scalar-2026} evaluate LLM judges on the same data and report over-penalisation of harmless rewrites. The stress test of RadSEM adds synonym substitution at every level to reduce lexical artefacts, and RadOT-Eval reports a count-only control baseline. Closest to our surface axis, \citet{reref-2026} rewrite references along a radiologist-designed taxonomy of reporting practices and show that meaning-preserving rewrites move metric scores and system rankings, with CRIMSON the most stable metric, GREEN less so and RadGraph F1 and RadCliQ the least. What we add is the other axis: matched meaning-\emph{changing} edits, so that sensitivity to meaning can be measured with surface held fixed, set against sensitivity to surface, and compared with what a confounded suite would have concluded.
+
+\paragraph{Shortcuts and contrast sets.}
+Benchmarks that can be solved from superficial cues are well documented for NLI \citep{gururangan-etal-2018-annotation,mccoy-etal-2019-right}; contrast sets \citep{gardner-etal-2020-evaluating,kaushik-etal-2020-learning} respond with minimally different inputs whose labels differ. Our matched \Pc/\Cc pairs are contrast sets for metrics whose two members are also equidistant from a third text, the reference.
+
+\section{Diagnosis: Labels Are Predictable from Surface Alone}
+\label{sec:diagnosis}
+
+\paragraph{A surface-only probe.}
+For a (reference, candidate) pair we compute ten features that do not depend on meaning: drops in Jaccard and token-F1 overlap, word- and character-level sequence-match ratios, the number and share of edited tokens, length ratio and difference, and whether the bag of tokens or any number changed. A logistic regression on these features predicts whether the candidate is labelled meaning-changing, with five-fold cross-validation grouped by report. An AUROC of 0.5 means the label carries no surface signal.
+
+\paragraph{Our earlier suite.}
+We first apply the probe to the suite of our earlier submission, which edits MIMIC-CXR sections with twelve rules (three meaning-preserving: reformatting, sentence reordering, a fixed paraphrase; nine meaning-changing) and includes 467 pairs with adjudicated human labels.
+Table~\ref{tab:surface} (top) shows that the probe reaches 0.92 and 0.96 on rule labels and 0.83 on human labels.
+For comparison, the best metric in that study, GREEN, reached 0.90 on rule labels and 0.81 on human labels.
+Two opposite single-feature cues coexist: candidates whose token bag changed are meaning-changing (Jaccard 0.81--0.89), and candidates with many edited tokens are meaning-preserving (edit count 0.16--0.24).
+A metric aligned with the first cue looks sensitive; one aligned with the second looks inverted.
+
+\paragraph{A public suite.}
+The synthetic task of RaTE-Eval \citep{zhao-etal-2024-ratescore} pairs a report sentence with an LLM-written synonym rewrite and an ``opposite'' rewrite; a metric should prefer the first. For the 739 of 847 triplets whose original sentence we could recover from the release (Appendix~\ref{app:rate}), the probe reaches 0.89. Here the cue points the other way: synonym rewrites edit about twice as many tokens as opposites, Jaccard alone has an AUROC of 0.17 and ranks the opposite above the synonym rewrite in 85\% of triplets. So do BLEU, ROUGE-L and BERTScore with a DistilBERT or RoBERTa backbone (paired accuracy 0.12--0.18), and RadCliQ and RadGraph F1 are below chance (0.42, 0.47), while CRIMSON (0.90) and gpt-oss-20b (0.99) are not fooled: the ``reversal'' of our own suite reappears in a public one.
+
+\paragraph{The direction depends on construction.}
+ReEvalMed's pairs are not openly distributed (a controlled-access release is announced), but its reported averages show the same regime: BLEU, ROUGE-L, RadGraph and BERTScore all assign \emph{higher} mean scores to candidates with clinically significant errors than to insignificant rewrites (e.g.\ BLEU 78.5 vs.\ 41.9), while GREEN does not separate the groups (74.3 vs.\ 74.8).
+When benign rewrites change the bag of tokens, only the ``large edit means benign'' cue remains and overlap metrics appear inverted.
+We reproduce both regimes inside \bench by choosing which benign cell a minimally edited \Cc is compared with (Table~\ref{tab:surface}; IU / MIMIC-CXR): the probe reaches 0.98--1.00 in both, while Jaccard alone flips from 0.56--0.59 to 0.01--0.05.
+In the controlled cells the probe falls to 0.52--0.54 (\ctrlt) and 0.62--0.64 (\ctrlz).
+
+\begin{table}[t]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2.5pt}
+\begin{adjustbox}{max width=\columnwidth}
+\input{tables/tab_surface}
+\end{adjustbox}
+\caption{AUROC for predicting the meaning-changing label from surface statistics only. \emph{Surface-only}: cross-validated logistic regression on ten surface features. \emph{Jaccard}, \emph{\#Edit tok.}: single features. Values far from 0.5 in either direction mean the label leaks through surface form. Rows for \bench: IU X-Ray / MIMIC-CXR. $^{\dagger}$Original sentences recovered by alignment (Appendix~\ref{app:rate}).}
+\label{tab:surface}
+\end{table}
+
+\section{\bench: Factorial Minimal Pairs}
+\label{sec:design}
+
+\subsection{Cells and Comparisons}
+
+Let $x$ be a reference section with sentences $s_1,\dots,s_n$ ($n\ge3$) and $s_k$ a target sentence. A rule produces two rewrites of $s_k$: $p$ (meaning-preserving) and $c$ (meaning-changing). The six candidates of Figure~\ref{fig:design} replace $s_k$ by $p$ or $c$ and apply one of three operations to the other sentences: none (S0), a random permutation of all sentences shared by both candidates (S1), or paraphrase of every non-target sentence, again shared (S2). \Pc and \Cc edit 4--6\% of the reference tokens in S0; S1 and S2 displace 75--77\% and 60--65\%.
+
+For a metric $m$ oriented so that higher means closer to the reference, the penalty of candidate $\tilde{x}$ is $\Delta_m(\tilde{x}) = m(x,x) - m(x,\tilde{x})$. Our main statistic is \emph{paired accuracy}: the share of targets for which $\Delta_m(\Cc) > \Delta_m(\Pc)$, with ties counted as one half. Values below 0.5 mean the metric prefers the candidate whose meaning changed. Controlled comparisons use \Cc and \Pc from the same row; confounded comparisons use C0 against P1 (\confr) or P2 (\confp).
+
+\subsection{Matched Edits}
+
+Seven edit types are implemented (full rules in Appendix~\ref{app:rules}): \emph{laterality}, \emph{anatomical region}, \emph{negation}, \emph{measurement}, \emph{temporal comparison}, \emph{severity} and \emph{uncertainty}. A naive suite would pair, say, the flip left$\to$right with an unrelated benign edit. We instead require the two edits to share their surface shape, using one of two mechanisms.
+
+\emph{(a) Benign operation plus flip.} \Cc applies the same benign transformation as \Pc and additionally flips the meaning slot: ``left pleural effusion'' becomes ``left-sided pleural effusion'' (\Pc) or ``right-sided pleural effusion'' (\Cc); ``left lower lobe'' becomes ``LLL'' or ``RLL''; ``4.7 cm'' becomes ``47 mm'' or ``94 mm''.
+
+\emph{(b) Two single-token substitutions.} ``stable'' becomes ``unchanged'' (\Pc) or ``increased'' (\Cc); ``mild'' becomes ``slight'' or ``moderate''; ``may represent'' becomes ``might represent'' or ``clearly represents''.
+
+Negation uses sentence-level templates rather than word insertion (``No X is seen'' becomes ``No X seen'' or ``X is seen''). Where a residual length asymmetry is unavoidable, variants with opposite asymmetry are generated and balanced at sampling time.
+A rule fires only if its trigger occurs exactly once in the target sentence and in the section; sentences with de-identification placeholders are never targets; laterality, region and measurement edits avoid negated sentences, and laterality and temporal edits avoid device descriptions.
+
+\subsection{Surface Layers}
+
+For S2 each non-target sentence is paraphrased by an instruction-tuned LLM (Qwen2.5-7B-Instruct; four samples). A paraphrase is accepted if a cross-encoder NLI model predicts entailment in both directions with probability at least 0.8, if numbers, laterality terms, units and the presence of negation are unchanged, and if at least two tokens differ; otherwise the original sentence is kept. 91.9\% (IU) and 92.2\% (MIMIC) of context sentences receive an accepted paraphrase.
+
+\subsection{Corpora and Sampling}
+
+We use IU X-Ray \citep{demner-fushman-etal-2016-iu} and MIMIC-CXR \citep{johnson-etal-2019-mimiccxr}. For each corpus we sample up to 150 targets per edit type, balanced over sections, with at most two targets per report and a cap on any single rewrite pattern. This gives 890 targets from 714 IU reports and 1,050 targets from 1,037 MIMIC-CXR reports (Appendix~\ref{app:sets}); IU supplies fewer than 150 measurement and uncertainty targets, and the corpora differ in what is measured: lesion sizes in IU, tube and catheter positions in 88\% of MIMIC-CXR measurement targets. IU X-Ray is public and is the release track; MIMIC-CXR is processed only with local models.
+
+\subsection{Fixed-Surface Monotonicity Set}
+\label{sec:monodesign}
+
+Monotonicity tests add errors one at a time and expect the penalty to grow, but every added error is also an added edit. We build 300 MIMIC-CXR sections that admit three matched edits of different types in three different sentences and derive four candidates that all edit the same three sites: M0 (three \Pc), M1 (one \Cc, two \Pc), M2 and M3 (three \Cc). Surface distance is constant along this ladder; only the number of meaning changes grows. For contrast we keep the usual ladder K1 (one \Cc, nothing else), K2 (two \Cc) and M3.
+
+\subsection{Validation of Labels}
+\label{sec:human}
+
+\tbd{Human validation: two graduate-student annotators, blinded to cell and edit type; 504 + 204 IU X-Ray pairs; agreement with rule labels per cell, Cohen's $\kappa$, main results on the validated subset.}
+Pending these labels, we report every main result additionally on a conservative subset that drops all substitution patterns we flagged in advance as debatable (Appendix~\ref{app:robust}).
+
+\paragraph{Strict-matched subset.} Shape matching leaves a small leak (probe 0.62--0.64 in \ctrlz), because a flip removes the original token more often than a benign substitution does. We therefore also report \ctrlz on the targets whose P0 and C0 have \emph{exactly} equal Jaccard and token-F1 overlap with the reference (443 IU, 486 MIMIC-CXR); both baselines are then 0.50 by construction.
+
+\section{Experimental Setup}
+
+\paragraph{Metrics.}
+\emph{Meaning-blind baselines}: Jaccard and token F1 over lower-cased alphanumeric tokens. \emph{Lexical and embedding}: BLEU, ROUGE-L, and BERTScore with three backbones, DistilBERT \citep{sanh-etal-2019-distilbert} (the RadEval default), RoBERTa-large \citep{liu-etal-2019-roberta} and DeBERTa-xlarge-MNLI \citep{he-etal-2021-deberta}. \emph{Clinical, non-LLM} (via RadEval, \citealp{xu-etal-2025-radeval}): F1CheXbert, temporal F1, SRR-BERT, RadGraph F1, RaTEScore, RadCliQ-v1. \emph{LLM-based metrics}: GREEN (RadLlama2-7B) and CRIMSON (the released MedGemma-4B model). All use released implementations with default settings.
+
+\paragraph{LLM judges.}
+Six open-weight configurations are run locally with vLLM \citep{kwon-etal-2023-vllm}: Llama-3.1-8B-Instruct \citep{llama3-2024}, Gemma-3-27B \citep{gemma3-2025}, Qwen3-32B with and without thinking \citep{qwen3-2025}, and gpt-oss-20b and gpt-oss-120b \citep{gptoss-2025}. The \emph{rubric} prompt asks whether the candidate states exactly the same findings as the reference and returns a label with a confidence, which we map to a score; the \emph{errors} prompt, in the style of GREEN, asks for a list of discrepancies and a count (Appendix~\ref{app:prompts}). \tbd{Proprietary judges (at least two families) on IU X-Ray.}
+
+\paragraph{Statistics.}
+Confidence intervals are 95\% percentile intervals from 1,000 bootstrap resamples of reports. For each metric we test (i) whether its paired accuracy differs from that of Jaccard on the same targets and (ii) whether it drops from \ctrlz to \ctrlt, by bootstrapping the difference. Effects are also summarised on penalties standardised per metric.
+
+\section{Results}
+
+\begin{table*}[t]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{0.93}
+\setlength{\tabcolsep}{5pt}
+\begin{adjustbox}{max width=\textwidth}
+\input{tables/tab_main}
+\end{adjustbox}
+\caption{Paired accuracy (chance 0.5). \textsc{R}: \confr (C0 vs.\ P1). \textsc{P}: \confp (C0 vs.\ P2). \textsc{0}: \ctrlz (C0 vs.\ P0). \textsc{2}: \ctrlt (C2 vs.\ P2). \emph{tie}: share of \ctrlz targets on which P0 and C0 receive exactly the same score. \emph{strict}: \ctrlz on the strict-matched subset (443 / 486 targets), where Jaccard and token F1 are 0.50 by construction. In column \textsc{0}, $^{\downarrow}$ marks a paired accuracy significantly below that of Jaccard, $^{\circ}$ one not distinguishable from it, and unmarked values are significantly above it; $^{\ast}$ marks a significant drop from \ctrlz to \ctrlt (bootstrap over reports, 95\%). Proprietary judges: \tbd{rows}.}
+\label{tab:main}
+\end{table*}
+
+\subsection{Conclusions Flip Between Confounded and Controlled Comparisons}
+
+Table~\ref{tab:main} gives paired accuracy for the two confounded and two of the controlled comparisons (\ctrlo and all outcome shares: Appendix~\ref{app:allcond}); the two corpora agree throughout.
+
+\textbf{The BERTScore reversal is produced by the benchmark.} With benign edits that reorder sentences (\confr), all three BERTScore variants, BLEU and ROUGE-L prefer the meaning-changing candidate in 97--100\% of targets. With matched edits (\ctrlz) the same metrics are above chance: 0.63--0.66 for the DistilBERT variant and 0.79--0.81 for DeBERTa-MNLI.
+
+\textbf{The direction of the artefact depends on the benign edit.} Jaccard and token F1 score 0.59--0.64 under \confr and 0.01--0.03 under \confp, RadGraph 0.27--0.34 and 0.04--0.07; only the benign cell changed between the two columns.
+
+\textbf{Rankings change.} Under \confr the best non-LLM scores on IU are RaTEScore and the baselines (0.63--0.64), with RadCliQ near the bottom (0.09); under \ctrlz the order is BERTScore (DeBERTa-MNLI) 0.79, RadCliQ 0.72, RaTEScore 0.68.
+
+\textbf{Label- and graph-based metrics do not react to most matched edits.} A paired accuracy near 0.5 has two readings, and the tie column separates them. F1CheXbert and temporal F1 give P0 and C0 exactly the same score for 89--96\% of targets, SRR-BERT for 73--77\% and RadGraph F1 for 48--56\%: the edit is invisible to them, not misjudged. The meaning-blind baselines are not a neutral yardstick in \ctrlz (0.59--0.64, through the residual leak), so we do not read ``below Jaccard'' as ``worse than chance''. The strict-matched subset removes the leak, and the picture holds: F1CheXbert 0.51--0.52, RadGraph F1 0.53--0.54 and SRR-BERT 0.58--0.60 stay close to chance, while RaTEScore (0.65--0.68), RadCliQ (0.67--0.71), BERTScore (0.65--0.85), CRIMSON (0.80--0.85) and GREEN (0.82--0.88) keep the order they have on all targets.
+
+\textbf{GREEN degrades under paraphrase; CRIMSON does not.} GREEN is the best non-judge metric under \ctrlz (0.85/0.83) but loses 0.088 [0.068, 0.108] on IU and 0.080 [0.061, 0.099] on MIMIC-CXR when the other sentences are paraphrased. CRIMSON stays at 0.80--0.84 in every column. The drop is not explained by paraphrases that drift in meaning: it is unchanged on the targets whose paraphrased context keeps every degree word (0.091 / 0.073), and recurs with a second paraphraser of another model family under a degree-word guard (0.076 [0.041, 0.111] on 301 IU targets; Appendix~\ref{app:alt}).
+
+\textbf{Controlled scores track radiologist agreement.} RaTE-Eval also rates 441 sentence pairs for errors by radiologists. Across our 16 scorers, the rank correlation between a scorer's Kendall $\tau$ with those ratings and its paired accuracy is 0.72 under \ctrlz (permutation $p{=}0.003$) and 0.66 under \ctrlt, but 0.41 under \confr and 0.29 under \confp ($p{>}0.1$; Appendix~\ref{app:rate}). The controlled comparison orders scorers the way radiologists do; the confounded ones do not.
+
+\subsection{Meaning Sensitivity and Surface Sensitivity Are Separate Axes}
+\label{sec:axes}
+
+Figure~\ref{fig:scatter} places each metric by two standardised effects: the extra penalty for a meaning change at fixed surface (C0 $-$ P0) and the extra penalty for paraphrasing the context at fixed meaning (P2 $-$ P0); Appendix~\ref{app:dose} lists all values. For the token-overlap baselines, BLEU, ROUGE-L, BERTScore, RadGraph and RadCliQ, the surface effect is 1.35--2.06 standard deviations and the meaning effect at most 0.23. F1CheXbert and temporal F1 react weakly to both; RaTEScore lies in between. CRIMSON and the judges other than Llama-3.1-8B have a meaning effect of at least 0.87 and a surface effect at or below 0.08; GREEN and Llama-3.1-8B combine a large meaning effect with a surface effect of 0.13--0.59.
+
+An \emph{exchange rate}, the penalty for paraphrasing the context divided by the penalty for one matched meaning change, puts the two on one scale. One paraphrased context costs BERTScore (DistilBERT) as much as 53 (IU) or 109 (MIMIC-CXR) meaning changes, RadGraph F1 18--19, RadCliQ 12--13, RaTEScore 6--13 and GREEN 0.3--0.6; for CRIMSON and the judges the rate is at or below 0.1.
+
+The surface penalty of the first group grows with the amount rewritten (Appendix~\ref{app:dose}) while paired accuracy within S2 stays flat: paraphrase does not erase the meaning signal of these metrics but adds an offset that swamps it whenever two candidates differ in how much they were rewritten. For LLM-based scorers the two factors interact instead: the meaning effect shrinks under paraphrase for GREEN ($-0.24$ / $-0.10$), Llama-3.1-8B ($-0.22$ / $-0.20$) and, less, gpt-oss-20b ($-0.09$ / $-0.13$), and stays within $\pm0.05$ for CRIMSON, Gemma-3-27B and all non-LLM metrics.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig3_meaning_vs_surface.pdf}
+\caption{Standardised penalty for a meaning change at fixed surface (x) against the penalty for paraphrasing the context at fixed meaning (y), IU X-Ray. BS: BERTScore. Both corpora: Appendix~\ref{app:dose}.}
+\label{fig:scatter}
+\end{figure}
+
+\subsection{LLM Judges: Near Ceiling, With Specific Failures}
+
+The reasoning models (gpt-oss-20b, gpt-oss-120b, Qwen3-32B with thinking) reach 0.95--0.97 in both controlled comparisons (Table~\ref{tab:main}), and unlike most metrics the judges are not hurt by the confounded comparisons, since a visibly rewritten benign candidate is easy to accept. The remaining errors are structured (Appendix~\ref{app:judges}).
+
+\textbf{Matched benign edits still trigger false alarms.} Gemma-3-27B flags 21--29\% of P0 candidates and Qwen3-32B without thinking 11--26\%, concentrated in unit conversions (``4.7 cm'' $\to$ ``47 mm'' is called a change by Gemma in 85--87\% of cases and by Qwen3 in 96\% on MIMIC-CXR) and in severity synonyms. The rubric wording explains part of it: stating that a converted quantity is the same removes most of Gemma-3-27B's unit false alarms (0.85--0.87 $\to$ 0.12--0.27) but only a quarter of Qwen3-32B's on MIMIC-CXR (0.96 $\to$ 0.70), and lowers detection of real errors (Appendix~\ref{app:judges}). Over-penalisation of harmless rewrites by LLM judges \citep{beyond-scalar-2026} is therefore not only an effect of rewrite size.
+
+\textbf{Certainty changes are missed under paraphrase.} A flipped hedge (``may represent'' $\leftrightarrow$ ``represents'') is flagged by Gemma-3-27B in 68--76\% and by Qwen3-32B in 60--70\% of cases when nothing else changes, but in only 34--39\% and 29--37\% when the context is paraphrased; Llama-3.1-8B flags 25--40\% in either layer. The reasoning models flag 68--90\% under paraphrase and lose little, except gpt-oss-20b on MIMIC-CXR (0.96 $\to$ 0.79).
+
+\textbf{The prompt can matter more than the model.} With the errors prompt (IU X-Ray), Gemma-3-27B lists a ``discrepancy'' for 90--99\% of meaning-preserving candidates and its \ctrlt accuracy falls from 0.93 to 0.34; Qwen3-32B falls from 0.91 to 0.87; both gpt-oss models stay at 0.93--0.97 (Appendix~\ref{app:prompt}).
+
+\subsection{Monotonicity at Fixed Surface}
+
+\begin{table}[t]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2.5pt}
+\begin{adjustbox}{max width=\columnwidth}
+\input{tables/tab_mono_main}
+\end{adjustbox}
+\caption{Monotonicity on 300 MIMIC-CXR sections (selected scorers; all in Appendix~\ref{app:mono}). \emph{Fixed-surface ladder}: all candidates edit the same three sites and contain 0--3 meaning changes; $\tau$ is the mean within-target Kendall correlation between the number of meaning changes and the penalty, and $i{\to}j$ the share of targets whose penalty increases from $i$ to $j$ changes. \emph{Growing-surface ladder}: each added error is also an added edit. Last column: share of targets where three benign edits are penalised more than one real error.}
+\label{tab:mono}
+\end{table}
+
+Table~\ref{tab:mono} contrasts the two ladders of \S\ref{sec:monodesign}. On the growing-surface ladder BLEU, ROUGE-L, the BERTScore variants, RadCliQ, RadGraph and the meaning-blind baselines increase their penalty with every added error in 95--100\% of targets. On the fixed-surface ladder BLEU ($\tau{=}0.17$) and RadGraph F1 (0.16) lose almost all of this ordering and ROUGE-L and BERTScore with DistilBERT most of it (0.36); for BLEU, ROUGE-L and RadGraph each step is detected little better than by chance (0.49--0.59). BERTScore with DeBERTa-MNLI (0.74) and RadCliQ (0.58) keep a real signal. All of these metrics nevertheless penalise three harmless edits more than one real error in 85--100\% of targets. A monotonicity test in which errors and edits grow together therefore cannot distinguish a metric that counts errors from one that measures edit distance.
+
+Under control, the error-enumerating LLM metrics are monotone (CRIMSON $\tau{=}0.88$, GREEN 0.77). Rubric-prompted judges detect the first meaning change (0.87--0.98; Llama-3.1-8B 0.68) but barely react to the second and third (0.49--0.61). This is a property of the output format, a binary verdict with a confidence, and not of the models: asked to enumerate discrepancies, the same gpt-oss models become the most monotone scorers of all ($\tau{=}0.96$ and $0.98$, every step 0.91--0.97), at the price of penalising three benign edits more than one error in 6--19\% of targets against 2--4\% with the rubric. The format helps weaker models less or not at all: Qwen3-32B moves from 0.64 to 0.73 but lets three benign edits outscore one error in 46\% of targets, and Gemma-3-27B, which lists discrepancies for nearly every benign edit, falls to 0.33.
+
+\subsection{Edit Types}
+
+Per-type results (Appendix~\ref{app:types}) refine known blind spots. (i) On \emph{severity}, BERTScore with DistilBERT, RadGraph and RadCliQ are below chance under control (0.07--0.38): replacing ``mild'' by ``slight'' is penalised more than replacing it by ``moderate''. This presupposes that the severity synonyms preserve meaning (\S\ref{sec:human}). (ii) On \emph{uncertainty}, GREEN and CRIMSON are near chance (0.54--0.57) while general-purpose judges reach 0.82--0.93. CRIMSON does recognise these edits, assigning a certainty error to 91--96\% of them, but the error barely moves its score (Appendix~\ref{app:crimson}). The low sensitivity thus lies in the weighting and may be intended: both metrics weight errors by clinical significance, and whether a shift of hedge is an error is contested (the radiologist-guided taxonomy of \citet{reref-2026} treats ``consistent with'' and ``likely represents'' as one confidence level, whereas our rules treat the former as more definite). Without that family of patterns the gap remains (Appendix~\ref{app:crimson}); we report it as a difference in what scorers count, not as a defect.
+
+\section{Discussion and Recommendations}
+
+\paragraph{Two inexpensive controls.}
+A perturbation suite supports a claim about meaning only insofar as its two classes cannot be told apart by surface form; otherwise suites built differently contradict each other for the same metric. We recommend that perturbation-based meta-evaluations report (i) a \emph{meaning-blind baseline} such as Jaccard next to every metric and (ii) a \emph{surface-only predictability} score for the labels; neither needs annotation or a GPU. A metric earns credit for semantic sensitivity only for what it achieves beyond the baseline on labels that surface does not predict.
+
+\paragraph{For metric users.}
+Overlap, embedding and graph metrics are dominated by how much text was rewritten, as \citet{reref-2026} also find; our controlled cells add that their remaining meaning signal is small (BLEU, RadGraph F1) to moderate (BERTScore with an NLI backbone, RadCliQ). CRIMSON is the most stable metric across surface conditions; GREEN is more sensitive to matched edits but affected by paraphrase. A reasoning LLM judge detects meaning changes most accurately and, asked to enumerate discrepancies, also grades them; the same prompt on a weaker model should first be validated on meaning-preserving pairs.
+
+\section{Conclusion}
+
+Separating surface from semantics changes what perturbation tests say about radiology report metrics: an apparent reversal disappears, apparent monotonicity is largely edit distance, label- and graph-based metrics are blind to most matched edits, and LLM-based scorers hold up with specific, reproducible failures.
+
+\section*{Limitations}
+
+\bench tests a text-level property: whether a metric distinguishes a candidate that restates the reference from one that states something different. It does not assess correctness with respect to the image, and it makes no claim about clinical significance; we do not weight edit types by their consequences for patients. \tbd{Human validation is by two non-clinician annotators; no radiologist reviewed the substitution lexicon. Validation by clinicians is left to an extended version.}
+Controlled comparisons are not perfectly surface-free: in \ctrlz the surface-only probe reaches 0.62--0.64 and Jaccard 0.59--0.63. We report the baseline, the share of ties and a strict-matched subset instead of claiming a clean control. Two IU targets contain a doubled ``-sided sided'' and are removed from the release. One measurement subtype (10-fold unit error) violates shape matching, since its \Pc edit changes two tokens and its \Cc edit one; it is reported separately and excluded in the robustness analysis. A few negation rewrites of telegraphic sentences are awkward.
+Edits are local substitutions of seven types. Omissions and insertions of whole findings cannot be matched at a position; our attempt to control them at sentence level failed the surface probe (Appendix~\ref{app:oi}) and is not used for conclusions. Rule-based edits do not cover the distribution of errors made by generation systems.
+S2 paraphrases are produced by an LLM of the Qwen family and accepted by an NLI model and lexical guards; residual meaning drift (e.g.\ ``large'' rendered as ``significant'') is possible and affects \Pc and \Cc of a target identically; Appendix~\ref{app:alt} bounds its influence on the GREEN result. One judge shares the paraphraser's model family.
+The uncertainty and severity labels encode one reading of hedges and grades; other taxonomies group some of our \Cc edits with the benign ones (\S6.5), and no clinician reviewed the lexicon. For RaTE-Eval the original sentences are not part of the synthetic-task release and were recovered by lexical alignment (Appendix~\ref{app:rate}).
+The monotonicity set and the sentence-level layer exist only for MIMIC-CXR, as IU X-Ray sections are too short. RadEval's domain-adapted BERTScore could not be run in our environment. Results for proprietary judges are \tbd{pending}.
+
+\section*{Ethical Considerations}
+
+We use de-identified reports from IU X-Ray (public) and MIMIC-CXR (credentialed access). MIMIC-CXR text was processed only with locally hosted models and is not redistributed; we release code, rule tables, identifiers and reconstruction scripts for MIMIC-CXR, and pairs, scores and judge outputs for IU X-Ray. The benchmark evaluates metrics, not clinical systems; a metric that does well on it is not thereby validated for clinical use. \tbd{Annotator recruitment, compensation, consent, and ethics-review status.}
+
+\bibliography{references}
+
+\clearpage
+\appendix
+
+\section{Edit Rules}
+\label{app:rules}
+
+\begin{table*}[t]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{p{0.085\textwidth}p{0.25\textwidth}p{0.26\textwidth}p{0.26\textwidth}p{0.07\textwidth}}
+\toprule
+\textbf{Type} & \textbf{Trigger (exactly once in sentence and section)} & \textbf{\Pc: meaning-preserving} & \textbf{\Cc: meaning-changing} & \textbf{Subtypes} \\
+\midrule
+Laterality & \emph{left/right} + finding noun or lobe; no \emph{bilateral/both}; no device terms; not negated & \emph{left X} $\to$ \emph{left-sided X}; \emph{X on the left}; \emph{left lower lobe} $\to$ \emph{LLL} & same operation with the other side: \emph{right-sided X}; \emph{X on the right}; \emph{RLL} & -- \\
+Region & side + lobe; \emph{lung bases}; side + \emph{(lung) base}; \emph{bibasilar}; \emph{basilar}; \emph{perihilar} & \emph{LLL}; \emph{bases of the lungs}; \emph{base of the left lung}; \emph{bilateral basilar}; \emph{basal}; \emph{parahilar} & \emph{LUL}; \emph{apices of the lungs}; \emph{apex of the left lung}; \emph{bilateral apical}; \emph{apical}; \emph{peripheral} & -- \\
+Negation & \emph{No X is seen}; \emph{There is no X}; \emph{No X.}; \emph{without X}; \emph{no evidence of X}; \emph{negative for X}; \emph{X is seen} (X contains a finding term; no other negation cue) & \emph{No X seen} / \emph{No X is identified}; \emph{There is no evidence of X}; \emph{X is absent}; \emph{with no X}; \emph{no sign of X}; \emph{negative for any X}; \emph{X seen} / \emph{X is visualized} & \emph{X is seen}; \emph{There is evidence of X}; \emph{X is present}; \emph{with new X}; \emph{new evidence of X}; \emph{positive for X}; \emph{X not seen} / \emph{X is not seen} & negated$\to$present; present$\to$negated \\
+Measurement & one number with \emph{cm/mm}, $0<v\le40$ & same quantity in the other unit: \emph{4.7 cm} $\to$ \emph{47 mm} & \emph{94 mm} (value $\times2$ or $\div2$) or \emph{47 cm} (10-fold error) & value; unit \\
+Temporal & \emph{unchanged, stable, improved, worsened, has/have increased, decreased, resolved, new}; no device terms; no other comparison cue & \emph{stable} $\leftrightarrow$ \emph{unchanged}; \emph{better}; \emph{worse}; \emph{progressed}; \emph{diminished}; \emph{cleared}; \emph{newly identified} & direction reversed: \emph{increased/worsened/improved}; \emph{decreased}; \emph{persisted}; \emph{previously seen} & -- \\
+Severity & \emph{trace, minimal, mild, small, moderate, large, severe, marked} modifying a finding; not negated & \emph{slight}; \emph{marked} $\leftrightarrow$ \emph{severe}; \emph{trace} $\leftrightarrow$ \emph{minimal}; \emph{small-sized}; \emph{moderate-sized}; \emph{large-volume} & another grade on the same scale & adjacent; extreme \\
+Uncertainty & \emph{may/could represent, likely represents, possibly representing, cannot be excluded, suspicious for, suggestive of, questionable, probable, possible, consistent/compatible with, represents} & hedge of the same strength: \emph{might represent}; \emph{probably}; \emph{cannot be ruled out}; \emph{concerning for}; \emph{compatible} $\leftrightarrow$ \emph{consistent} & \emph{clearly represents}; \emph{is excluded}; \emph{consistent with}; \emph{definite}; or \emph{suspicious for}, \emph{may represent} & hedged$\to$definite; definite$\to$hedged \\
+\bottomrule
+\end{tabular}
+\caption{Edit rules (abridged; the released code is authoritative). Every \Pc/\Cc pair is produced at the same position and must differ by at most one token in edit size.}
+\label{tab:rules}
+\end{table*}
+
+Table~\ref{tab:rules} lists the rules. Rules are deterministic given a seed derived from the report identifier.
+
+\section{Set Composition}
+\label{app:sets}
+
+\begin{table*}[t]
+\centering
+\small
+\begin{adjustbox}{max width=\textwidth}
+\input{tables/tab_sets}
+\end{adjustbox}
+\caption{Composition of the factorial sets. Each target yields an identity pair and six candidates. \emph{Patterns}: number of distinct rewrite patterns. \emph{Para.\ acc.}: share of context sentences with an accepted paraphrase in S2.}
+\label{tab:sets}
+\end{table*}
+
+Table~\ref{tab:sets} gives counts per edit type. Sections are re-extracted from the full report text; a \emph{Findings} or \emph{Impression} section is used only if its header is present, and reports whose two sections are identical are dropped. The monotonicity set has 300 MIMIC-CXR targets and seven candidates each.
+
+\section{Results by Edit Type}
+\label{app:types}
+
+\begin{table*}[t]
+\centering
+\small
+\begin{adjustbox}{max width=\textwidth}
+\input{tables/tab_types_iu}
+\end{adjustbox}
+\caption{\ctrlz paired accuracy by edit type, IU X-Ray.}
+\label{tab:typesiu}
+\end{table*}
+
+\begin{table*}[t]
+\centering
+\small
+\begin{adjustbox}{max width=\textwidth}
+\input{tables/tab_types_mimic}
+\end{adjustbox}
+\caption{\ctrlz paired accuracy by edit type, MIMIC-CXR.}
+\label{tab:typesmimic}
+\end{table*}
+
+\begin{table*}[t]
+\centering
+\small
+\begin{adjustbox}{max width=\textwidth}
+\input{tables/tab_subtypes}
+\end{adjustbox}
+\caption{\ctrlz paired accuracy by subtype (IU X-Ray / MIMIC-CXR). $^{\ddagger}$The unit subtype is not shape-matched (the \Pc edit changes two tokens, the \Cc edit one) and behaves like a confounded comparison for surface-driven metrics.}
+\label{tab:subtypes}
+\end{table*}
+
+Tables~\ref{tab:typesiu}--\ref{tab:subtypes} give paired accuracy by type and subtype.
+
+\section{Robustness to Flagged Edits}
+\label{app:robust}
+
+\begin{table*}[t]
+\centering
+\small
+\begin{adjustbox}{max width=\textwidth}
+\input{tables/tab_robust}
+\end{adjustbox}
+\caption{\ctrlz paired accuracy (IU X-Ray / MIMIC-CXR) on all targets and after removing, in turn, the non-matched unit subtype, every target whose meaning-preserving substitution we flagged in advance as debatable, and both together with eight awkward negation rewrites.}
+\label{tab:robust}
+\end{table*}
+
+Table~\ref{tab:robust} shows that the conclusions of \S6.1 hold on the conservative subset; embedding-based metrics gain 0.07--0.13 when flagged substitutions are removed.
+
+\section{Decomposition and Dose--Response}
+\label{app:dose}
+
+\begin{table*}[t]
+\centering
+\small
+\begin{adjustbox}{max width=\textwidth}
+\input{tables/tab_decomp}
+\end{adjustbox}
+\caption{Standardised effects (IU X-Ray / MIMIC-CXR). \emph{Interaction S2}: meaning effect within S2 minus meaning effect within S0. \emph{Exchange rate}: mean penalty of reordering (P1 $-$ P0) or of paraphrasing the context (P2 $-$ P0), divided by the mean penalty of one matched meaning change (C0 $-$ P0); ``--'' where the latter is not positive.}
+\label{tab:decomp}
+\end{table*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/fig_dose_response.pdf}
+\caption{Extra penalty on the meaning-preserving candidate P2 relative to P0, by quartile of the share of reference tokens rewritten.}
+\label{fig:dose}
+\end{figure*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/fig3_meaning_vs_surface_both.pdf}
+\caption{Figure~\ref{fig:scatter} for both corpora.}
+\label{fig:scatterboth}
+\end{figure*}
+
+\section{All Comparisons and Outcome Shares}
+\label{app:allcond}
+
+\begin{table*}[t]
+\centering
+\small
+\begin{adjustbox}{max width=\textwidth}
+\input{tables/tab_allcond}
+\end{adjustbox}
+\caption{Paired accuracy in the three controlled comparisons and the shares of wins ($\Delta(\Cc)>\Delta(\Pc)$), ties and losses in \ctrlz (IU X-Ray / MIMIC-CXR). Paired accuracy is win $+$ tie$/2$.}
+\label{tab:allcond}
+\end{table*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/fig2_confound_vs_controlled.pdf}
+\caption{Paired accuracy under a surface-confounded comparison (hollow; \confr) and under the matched comparison (filled; \ctrlz).}
+\label{fig:dumbbell}
+\end{figure*}
+
+Table~\ref{tab:allcond} adds \ctrlo and separates ties from losses; Figure~\ref{fig:dumbbell} visualises the first and third columns of Table~\ref{tab:main}.
+
+\section{Robustness of the Paraphrase Layer}
+\label{app:alt}
+
+GREEN's drop from \ctrlz to \ctrlt could in principle reflect paraphrases that drift in meaning, which GREEN would be right to penalise. We observed such drift for degree words (``no large effusion'' rendered as ``no significant effusion''). Two checks address this.
+
+\paragraph{Degree-preserving subset.} We keep the targets whose paraphrased context contains exactly the same multiset of degree words as the original (766 of 890 IU and 792 of 1,050 MIMIC-CXR targets). GREEN's drop is 0.091 (IU) and 0.073 (MIMIC-CXR) on this subset, against 0.088 and 0.080 on all targets.
+
+\IfFileExists{tables/tab_alt.tex}{%
+\paragraph{A second paraphraser.} We regenerated the S2 layer for 301 IU targets with a model of another family (Llama-3.1-8B-Instruct), adding a guard that rejects any paraphrase that changes a degree word (86\% of context sentences received an accepted paraphrase), and rescored all metrics (Table~\ref{tab:alt}). GREEN's drop is 0.076 [0.041, 0.111] with the second paraphraser against 0.095 with the first on the same targets; no other non-LLM metric drops under either.
+
+\begin{table*}[t]
+\centering
+\small
+\begin{adjustbox}{max width=\textwidth}
+\input{tables/tab_alt}
+\end{adjustbox}
+\caption{S2 layer regenerated with a second paraphraser and a degree-word guard (301 IU targets). \ctrlt and the drop from \ctrlz with 95\% bootstrap intervals, for the original paraphraser on the same targets and for the second one.}
+\label{tab:alt}
+\end{table*}
+}{}
+
+\section{RaTE-Eval}
+\label{app:rate}
+
+\begin{table}[t]
+\centering
+\small
+\begin{adjustbox}{max width=\columnwidth}
+\input{tables/tab_rate3}
+\end{adjustbox}
+\caption{RaTE-Eval synthetic task (739 triplets): share of triplets in which the opposite rewrite is penalised more than the synonym rewrite, ties counted as one half.}
+\label{tab:rate3}
+\end{table}
+
+The synthetic task of RaTE-Eval provides, for 847 report sentences from MIMIC-IV, a synonym rewrite and an opposite rewrite written by an LLM, but not the sentences themselves. The same sentences occur among the reference sentences of the benchmark's sentence-level task. We recover each original as the reference sentence with the highest TF--IDF (uni- and bigram) similarity to both rewrites and keep the 739 triplets with a confident match. The surface-only probe gives 0.86 on all 847 triplets and 0.87 on the 714 for which the two rewrites independently select the same sentence, a criterion that cannot favour either candidate. Table~\ref{tab:rate3} gives the paired accuracy of all scorers on the 739 triplets.
+
+\IfFileExists{tables/tab_external.tex}{%
+\paragraph{Agreement with radiologists.} The other two tasks of RaTE-Eval carry radiologist ratings: error counts for 2,216 sentence pairs and a 0--5 score for 370 paragraph pairs. Table~\ref{tab:external} lists the Kendall correlation of each scorer with these ratings next to its paired accuracies in this paper (mean of the two corpora), and, in the bottom rows, the Spearman correlation across scorers between the two, with a permutation test over scorers. RaTE-Eval covers many imaging modalities, so chest-X-ray-specific scorers are at a disadvantage, and with 16 scorers the intervals are wide; the contrast between the controlled and the confounded columns is nevertheless consistent across both tasks.
+
+\begin{table*}[t]
+\centering
+\small
+\begin{adjustbox}{max width=\textwidth}
+\input{tables/tab_external}
+\end{adjustbox}
+\caption{Agreement with radiologist ratings on RaTE-Eval (Kendall $\tau$) and, in the bottom rows, Spearman correlation across scorers between that agreement and each column of this paper.}
+\label{tab:external}
+\end{table*}
+}{}
+
+\section{Monotonicity: All Scorers}
+\label{app:mono}
+
+\begin{table*}[t]
+\centering
+\small
+\begin{adjustbox}{max width=\textwidth}
+\input{tables/tab_mono}
+\end{adjustbox}
+\caption{Monotonicity on 300 MIMIC-CXR sections, all scorers; columns as in Table~\ref{tab:mono}.}
+\label{tab:monofull}
+\end{table*}
+
+\section{LLM Judges by Cell, Edit Type and Prompt}
+\label{app:judges}
+\label{app:prompt}
+
+\begin{table*}[t]
+\centering
+\small
+\setlength{\tabcolsep}{4.5pt}
+\begin{adjustbox}{max width=\textwidth}
+\input{tables/tab_judges}
+\end{adjustbox}
+\caption{Share of candidates that a judge labels as meaning-changing (rubric prompt). Meaning-preserving cells should be near 0, meaning-changing cells near 1. Identity pairs are flagged in at most 0.6\% of cases for every judge.}
+\label{tab:judges}
+\end{table*}
+
+
+\begin{table*}[t]
+\centering
+\small
+\begin{adjustbox}{max width=\textwidth}
+\input{tables/tab_judges_types}
+\end{adjustbox}
+\caption{Selected type-level rates for the rubric prompt: false alarms on matched benign edits (P0) for measurement and severity; detections under paraphrase (C2) for uncertainty and laterality.}
+\label{tab:judgestypes}
+\end{table*}
+
+\begin{table*}[t]
+\centering
+\small
+\begin{adjustbox}{max width=\textwidth}
+\input{tables/tab_prompt}
+\end{adjustbox}
+\caption{Prompt sensitivity on IU X-Ray. For the errors prompt a candidate counts as flagged if at least one discrepancy is listed.}
+\label{tab:prompt}
+\end{table*}
+
+\IfFileExists{tables/tab_unit.tex}{%
+\begin{table*}[t]
+\centering
+\small
+\begin{adjustbox}{max width=\textwidth}
+\input{tables/tab_unit}
+\end{adjustbox}
+\caption{Rubric prompt with and without an added sentence stating that the same quantity expressed in another unit is not a change (\emph{rubric-unit}). Share of candidates labelled meaning-changing; \emph{P0 value}: benign unit conversions; \emph{P0 other}: benign edits of the other six types.}
+\label{tab:unit}
+\end{table*}
+
+Table~\ref{tab:unit} isolates the effect of the rubric wording on unit conversions. The added sentence removes most of Gemma-3-27B's unit false alarms, about half of Qwen3-32B's on IU and a quarter on MIMIC-CXR, and lowers the detection of real measurement errors for every judge (by 4--19 points); for Llama-3.1-8B it lowers every rate (P0 false alarms 0.17 $\to$ 0.10, C0 detections 0.69 $\to$ 0.59), i.e.\ it shifts the judge's threshold rather than its understanding of units.
+}{}
+
+\section{Error Attribution by CRIMSON}
+\label{app:crimson}
+
+\begin{table*}[t]
+\centering
+\small
+\begin{adjustbox}{max width=\textwidth}
+\input{tables/tab_crimson}
+\end{adjustbox}
+\caption{CRIMSON error categories (IU X-Ray / MIMIC-CXR): share of candidates with at least one listed error, with an error of the expected category, and the paired accuracy of the final score.}
+\label{tab:crimson}
+\end{table*}
+
+On the uncertainty targets whose pattern is not in the ``consistent with / compatible with / suspicious for / suggestive of'' family (IU, $n{=}36$), \ctrlz paired accuracy is 0.58 for GREEN, 0.60 for CRIMSON and 0.93--1.00 for Gemma-3-27B, Qwen3-32B and gpt-oss-120b.
+
+\section{A Sentence-Level Layer That Failed the Surface Probe}
+\label{app:oi}
+
+\begin{table}[t]
+\centering
+\small
+\begin{adjustbox}{max width=\columnwidth}
+\input{tables/tab_oi}
+\end{adjustbox}
+\caption{Omission/insertion layer (MIMIC-CXR, 150 targets each). The surface-only probe separates the classes, so paired accuracies are not controlled measurements.}
+\label{tab:oi}
+\end{table}
+
+We attempted to extend the design to omitted and inserted findings by matching sentence-level operations: deleting a finding sentence vs.\ deleting a technique or comparison sentence, and appending a finding sentence from another report vs.\ appending a paraphrase of an existing sentence. The surface-only probe reaches 0.89 in the minimal layer (Table~\ref{tab:oi}), mainly because a restatement shares tokens with the report whereas a foreign sentence does not. We report the layer as a negative example of why the probe should be run before results are interpreted.
+
+\section{Prompts and Implementation}
+\label{app:prompts}
+
+\paragraph{Rubric prompt.} The judge sees the reference and the candidate and is asked whether the candidate states exactly the same clinical findings; differences in wording, order, formatting, abbreviations and synonyms are to be treated as not changing the meaning, and changes in presence, laterality, location, severity or size, certainty, measurement or comparison as changing it. It answers with a JSON object containing a label (\textsc{preserved}/\textsc{changed}) and an integer confidence; the score is the confidence for \textsc{preserved} and one minus the confidence for \textsc{changed}.
+
+\paragraph{Errors prompt.} The judge lists every clinically meaningful discrepancy, one per line, and ends with a line giving the count $n$; the score is $1/(1+n)$.
+
+\paragraph{Decoding.} Temperature 0. For reasoning models only the final channel is parsed; outputs without a final answer (at most 0.5\% of rubric and 0.5\% of errors outputs) are treated as missing.
+
+\paragraph{Software.} RadEval 2.2.1, bert-score 0.3.13, green-score 0.0.12, vLLM 0.30. GREEN uses RadLlama2-7B; CRIMSON uses the released MedGemma-4B checkpoint with the reference prompt and scoring code, with batched generation.
+
+\paragraph{Human annotation.} \tbd{Instructions, annotator background, time, agreement tables.}
+
+\end{document}

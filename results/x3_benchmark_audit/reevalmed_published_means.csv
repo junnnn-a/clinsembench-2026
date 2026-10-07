@@ -1,0 +1,6 @@
+metric,mean_score_significant_error_pairs,mean_score_insignificant_pairs,score_gap(sig - insig),rewards_the_erroneous_candidate
+BLEU,78.48,41.89,36.59,True
+ROUGE-L,87.9,65.95,21.950000000000003,True
+RadGraph,81.35,58.56,22.789999999999992,True
+BERT-F1,97.31,92.99,4.320000000000007,True
+GREEN,74.3,74.76,-0.46000000000000796,False

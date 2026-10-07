@@ -1,0 +1,26 @@
+\begin{tabular}{lcc}
+\toprule
+\textbf{Scorer} & \textbf{Paired acc.} & \textbf{Tie} \\
+\midrule
+\multicolumn{3}{l}{\textit{Meaning-blind baselines}} \\
+Jaccard & 0.15 & 0.02 \\
+Token F1 & 0.14 & 0.01 \\
+\multicolumn{3}{l}{\textit{Lexical / embedding}} \\
+BLEU & 0.12 & 0.00 \\
+ROUGE-L & 0.12 & 0.01 \\
+BERTScore (DistilBERT) & 0.14 & 0.00 \\
+BERTScore (RoBERTa-L) & 0.18 & 0.00 \\
+BERTScore (DeBERTa-MNLI) & 0.44 & 0.00 \\
+\multicolumn{3}{l}{\textit{Clinical, non-LLM}} \\
+F1CheXbert & 0.52 & 0.93 \\
+Temporal F1 & 0.49 & 0.90 \\
+SRR-BERT & 0.54 & 0.86 \\
+RadGraph F1 & 0.47 & 0.24 \\
+RaTEScore & 0.52 & 0.07 \\
+RadCliQ-v1 & 0.42 & 0.00 \\
+\multicolumn{3}{l}{\textit{LLM-based metrics}} \\
+CRIMSON & 0.90 & 0.19 \\
+\multicolumn{3}{l}{\textit{LLM judges (rubric prompt)}} \\
+gpt-oss-20b & 0.99 & 0.02 \\
+\bottomrule
+\end{tabular}

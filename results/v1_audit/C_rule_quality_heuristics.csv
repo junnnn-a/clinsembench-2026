@@ -1,0 +1,101 @@
+section,split,perturbation_type,issue,n_type,n_flagged,rate
+impression,full_clean_5k,identity,reference_has_duplicated_sentence,4666,18,0.0038576939562794685
+impression,full_clean_5k,identity,reference_has_numbered_list,4666,490,0.10501500214316331
+impression,full_clean_5k,identity,reference_has_abbrev_split_risk(Dr./a.m./p.m.),4666,373,0.07993999142734676
+impression,full_clean_5k,identity,reference_word_count<=5,4666,49,0.01050150021431633
+impression,full_clean_5k,negation_flip,direction=present->negated(insert 'no'),3581,2254,0.6294331192404357
+impression,full_clean_5k,negation_flip,direction=negated->present,3581,1327,0.37056688075956434
+impression,full_clean_5k,negation_flip,inserted 'no' lands mid-phrase (e.g. 'left no pleural effusion'),2254,2125,0.9427684117125111
+impression,full_clean_5k,negation_flip,'present' finding sits in a sentence that already has a negation cue,2254,171,0.07586512866015972
+impression,full_clean_5k,negation_flip,negated->present leaves coordinated remainder ('X is present or Y'),1327,184,0.1386586284853052
+impression,full_clean_5k,laterality_flip,source=bilateral (paper says bilateral is skipped),3229,295,0.09135955404149891
+impression,full_clean_5k,laterality_flip,reference mentions BOTH left and right (first-match flip may create contradiction),3229,1115,0.34530814493651285
+impression,full_clean_5k,laterality_flip,"flipped token is non-anatomical candidate ('right heart', 'left in place', 'right IJ/PICC' device)",3229,693,0.21461752864663983
+impression,full_clean_5k,measurement_flip,unit swap only (cm<->mm); numeric value never edited,322,322,1.0
+impression,full_clean_5k,uncertainty_flip,direction=asserted->possible (insert 'possible'),3049,2471,0.8104296490652673
+impression,full_clean_5k,uncertainty_flip,direction=hedged->definite,3049,578,0.1895703509347327
+impression,full_clean_5k,benign_format,prefix 'Report impression:' (single-sentence refs; also used for FINDINGS section),4666,661,0.14166309472781827
+impression,full_clean_5k,benign_format,bullets break numbered list ('- 1. - ...'),4666,489,0.10480068581225889
+impression,full_clean_5k,benign_sentence_order,reference has discourse connective (However/Otherwise/This/These/Also ...) -> order-dependent,3053,413,0.13527677694071405
+impression,full_clean_5k,benign_sentence_order,reference has numbered list,3053,485,0.15886013756960368
+impression,full_clean_5k,finding_deletion,whole section replaced by 'No acute cardiopulmonary abnormality.',3108,353,0.11357786357786358
+impression,full_clean_5k,false_finding_insertion,reference lacks terminal period before appended sentence,4666,144,0.030861551650235748
+impression,full_clean_5k,false_finding_insertion,"inserted sentence carries laterality/severity/size (multi-factor, not minimal)",4666,4666,1.0
+impression,full_clean_5k,temporal_comparison_flip,detail=stable/unchanged->increased,1963,1156,0.5888945491594498
+impression,full_clean_5k,temporal_comparison_flip,flipped word describes device/position ('tube|catheter|line|lead ... unchanged'),1963,303,0.1543555781966378
+impression,full_clean_5k,severity_flip,"polarity flip (small/trace/mild/minimal <-> large/severe), not an adjacent grade",2253,1789,0.7940523746116289
+impression,subset200,identity,reference_has_duplicated_sentence,1741,10,0.005743825387708214
+impression,subset200,identity,reference_has_numbered_list,1741,209,0.12004595060310166
+impression,subset200,identity,reference_has_abbrev_split_risk(Dr./a.m./p.m.),1741,146,0.08385985066053991
+impression,subset200,identity,reference_word_count<=5,1741,8,0.004595060310166571
+impression,subset200,negation_flip,direction=present->negated(insert 'no'),200,131,0.655
+impression,subset200,negation_flip,direction=negated->present,200,69,0.345
+impression,subset200,negation_flip,inserted 'no' lands mid-phrase (e.g. 'left no pleural effusion'),131,120,0.916030534351145
+impression,subset200,negation_flip,'present' finding sits in a sentence that already has a negation cue,131,14,0.10687022900763359
+impression,subset200,negation_flip,negated->present leaves coordinated remainder ('X is present or Y'),69,11,0.15942028985507245
+impression,subset200,laterality_flip,source=bilateral (paper says bilateral is skipped),200,15,0.075
+impression,subset200,laterality_flip,reference mentions BOTH left and right (first-match flip may create contradiction),200,70,0.35
+impression,subset200,laterality_flip,"flipped token is non-anatomical candidate ('right heart', 'left in place', 'right IJ/PICC' device)",200,42,0.21
+impression,subset200,measurement_flip,unit swap only (cm<->mm); numeric value never edited,200,200,1.0
+impression,subset200,uncertainty_flip,direction=asserted->possible (insert 'possible'),200,161,0.805
+impression,subset200,uncertainty_flip,direction=hedged->definite,200,39,0.195
+impression,subset200,benign_format,prefix 'Report impression:' (single-sentence refs; also used for FINDINGS section),200,25,0.125
+impression,subset200,benign_format,bullets break numbered list ('- 1. - ...'),200,23,0.115
+impression,subset200,benign_sentence_order,reference has discourse connective (However/Otherwise/This/These/Also ...) -> order-dependent,200,31,0.155
+impression,subset200,benign_sentence_order,reference has numbered list,200,29,0.145
+impression,subset200,finding_deletion,whole section replaced by 'No acute cardiopulmonary abnormality.',200,25,0.125
+impression,subset200,false_finding_insertion,reference lacks terminal period before appended sentence,200,7,0.035
+impression,subset200,false_finding_insertion,"inserted sentence carries laterality/severity/size (multi-factor, not minimal)",200,200,1.0
+impression,subset200,temporal_comparison_flip,detail=stable/unchanged->increased,200,108,0.54
+impression,subset200,temporal_comparison_flip,flipped word describes device/position ('tube|catheter|line|lead ... unchanged'),200,31,0.155
+impression,subset200,severity_flip,"polarity flip (small/trace/mild/minimal <-> large/severe), not an adjacent grade",200,148,0.74
+findings,full_clean_5k,identity,reference_has_duplicated_sentence,4667,20,0.004285408185129634
+findings,full_clean_5k,identity,reference_has_numbered_list,4667,92,0.019712877651596315
+findings,full_clean_5k,identity,reference_has_abbrev_split_risk(Dr./a.m./p.m.),4667,178,0.03814013284765374
+findings,full_clean_5k,identity,reference_word_count<=5,4667,7,0.0014998928647953717
+findings,full_clean_5k,negation_flip,direction=present->negated(insert 'no'),3964,1642,0.41422805247225025
+findings,full_clean_5k,negation_flip,direction=negated->present,3964,2322,0.5857719475277497
+findings,full_clean_5k,negation_flip,inserted 'no' lands mid-phrase (e.g. 'left no pleural effusion'),1642,1552,0.9451887941534713
+findings,full_clean_5k,negation_flip,'present' finding sits in a sentence that already has a negation cue,1642,141,0.08587088915956151
+findings,full_clean_5k,negation_flip,negated->present leaves coordinated remainder ('X is present or Y'),2322,626,0.2695951765719208
+findings,full_clean_5k,laterality_flip,source=bilateral (paper says bilateral is skipped),3666,230,0.06273867975995635
+findings,full_clean_5k,laterality_flip,reference mentions BOTH left and right (first-match flip may create contradiction),3666,1689,0.4607201309328969
+findings,full_clean_5k,laterality_flip,"flipped token is non-anatomical candidate ('right heart', 'left in place', 'right IJ/PICC' device)",3666,1015,0.27686852154937264
+findings,full_clean_5k,measurement_flip,unit swap only (cm<->mm); numeric value never edited,465,465,1.0
+findings,full_clean_5k,uncertainty_flip,direction=asserted->possible (insert 'possible'),3145,2596,0.8254372019077901
+findings,full_clean_5k,uncertainty_flip,direction=hedged->definite,3145,549,0.17456279809220987
+findings,full_clean_5k,benign_format,prefix 'Report impression:' (single-sentence refs; also used for FINDINGS section),4667,96,0.020569959288622243
+findings,full_clean_5k,benign_format,bullets break numbered list ('- 1. - ...'),4667,91,0.019498607242339833
+findings,full_clean_5k,benign_sentence_order,reference has discourse connective (However/Otherwise/This/These/Also ...) -> order-dependent,4300,577,0.1341860465116279
+findings,full_clean_5k,benign_sentence_order,reference has numbered list,4300,92,0.021395348837209303
+findings,full_clean_5k,finding_deletion,whole section replaced by 'No acute cardiopulmonary abnormality.',3198,23,0.007191994996873046
+findings,full_clean_5k,false_finding_insertion,reference lacks terminal period before appended sentence,4667,132,0.02828369402185558
+findings,full_clean_5k,false_finding_insertion,"inserted sentence carries laterality/severity/size (multi-factor, not minimal)",4667,4667,1.0
+findings,full_clean_5k,temporal_comparison_flip,detail=stable/unchanged->increased,2645,1729,0.6536862003780718
+findings,full_clean_5k,temporal_comparison_flip,flipped word describes device/position ('tube|catheter|line|lead ... unchanged'),2645,413,0.1561436672967864
+findings,full_clean_5k,severity_flip,"polarity flip (small/trace/mild/minimal <-> large/severe), not an adjacent grade",2667,2150,0.8061492313460817
+findings,subset200,identity,reference_has_duplicated_sentence,1727,10,0.005790387955993051
+findings,subset200,identity,reference_has_numbered_list,1727,41,0.02374059061957151
+findings,subset200,identity,reference_has_abbrev_split_risk(Dr./a.m./p.m.),1727,83,0.04806022003474233
+findings,subset200,identity,reference_word_count<=5,1727,0,0.0
+findings,subset200,negation_flip,direction=present->negated(insert 'no'),200,78,0.39
+findings,subset200,negation_flip,direction=negated->present,200,122,0.61
+findings,subset200,negation_flip,inserted 'no' lands mid-phrase (e.g. 'left no pleural effusion'),78,76,0.9743589743589743
+findings,subset200,negation_flip,'present' finding sits in a sentence that already has a negation cue,78,6,0.07692307692307693
+findings,subset200,negation_flip,negated->present leaves coordinated remainder ('X is present or Y'),122,32,0.26229508196721313
+findings,subset200,laterality_flip,source=bilateral (paper says bilateral is skipped),200,7,0.035
+findings,subset200,laterality_flip,reference mentions BOTH left and right (first-match flip may create contradiction),200,93,0.465
+findings,subset200,laterality_flip,"flipped token is non-anatomical candidate ('right heart', 'left in place', 'right IJ/PICC' device)",200,49,0.245
+findings,subset200,measurement_flip,unit swap only (cm<->mm); numeric value never edited,200,200,1.0
+findings,subset200,uncertainty_flip,direction=asserted->possible (insert 'possible'),200,176,0.88
+findings,subset200,uncertainty_flip,direction=hedged->definite,200,24,0.12
+findings,subset200,benign_format,prefix 'Report impression:' (single-sentence refs; also used for FINDINGS section),200,8,0.04
+findings,subset200,benign_format,bullets break numbered list ('- 1. - ...'),200,3,0.015
+findings,subset200,benign_sentence_order,reference has discourse connective (However/Otherwise/This/These/Also ...) -> order-dependent,200,23,0.115
+findings,subset200,benign_sentence_order,reference has numbered list,200,5,0.025
+findings,subset200,finding_deletion,whole section replaced by 'No acute cardiopulmonary abnormality.',200,2,0.01
+findings,subset200,false_finding_insertion,reference lacks terminal period before appended sentence,200,6,0.03
+findings,subset200,false_finding_insertion,"inserted sentence carries laterality/severity/size (multi-factor, not minimal)",200,200,1.0
+findings,subset200,temporal_comparison_flip,detail=stable/unchanged->increased,200,136,0.68
+findings,subset200,temporal_comparison_flip,flipped word describes device/position ('tube|catheter|line|lead ... unchanged'),200,44,0.22
+findings,subset200,severity_flip,"polarity flip (small/trace/mild/minimal <-> large/severe), not an adjacent grade",200,170,0.85

@@ -1,0 +1,647 @@
+\documentclass[11pt]{article}
+\usepackage[review]{acl}
+
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+\usepackage{inconsolata}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{makecell}
+\usepackage{xspace}
+\usepackage{float}
+\usepackage{placeins}
+\usepackage{adjustbox}
+\usepackage{pifont}
+\usepackage{dblfloatfix}
+
+\newcommand{\bench}{ClinSemBench\xspace}
+\newcommand{\pres}{meaning-preserving\xspace}
+\newcommand{\chg}{meaning-changing\xspace}
+\newcommand{\Pres}{Meaning-preserving\xspace}
+\newcommand{\Chg}{Meaning-changing\xspace}
+\newcommand{\auc}{AUROC\xspace}
+\newcommand{\drop}{\Delta}
+\newcommand{\yes}{\textsc{yes}\xspace}
+\newcommand{\no}{\textsc{no}\xspace}
+\newcommand{\uncertain}{\textsc{uncertain}\xspace}
+\newcommand{\todofig}[2]{%
+\begin{figure}[t]
+\centering
+\fbox{\begin{minipage}[c][#1][c]{0.92\columnwidth}
+\centering\small #2
+\end{minipage}}
+\end{figure}}
+\newcommand{\todofigwide}[2]{%
+\begin{figure*}[t]
+\centering
+\fbox{\begin{minipage}[c][#1][c]{0.93\textwidth}
+\centering\small #2
+\end{minipage}}
+\end{figure*}}
+
+\title{\bench: Stress-Testing Radiology Report Metrics with Meaning-Preserving and Meaning-Changing Minimal Pairs}
+
+\author{Anonymous ACL submission}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Radiology report generation is often evaluated by comparing a candidate report with a reference, but high reference-based similarity does not guarantee sensitivity to semantic changes in the stated findings.
+We introduce \bench, a controlled minimal-pair benchmark for stress-testing whether radiology report metrics distinguish \pres edits from \chg edits in MIMIC-CXR report sections.
+Candidates preserve meaning through formatting, sentence-order, and rule-based paraphrase edits, or change meaning through negation, laterality, anatomy, severity wording, uncertainty, temporal comparison, finding omission, false finding insertion, and measurement edits.
+We validate 480 blinded pairs with 840 human judgments; aggregated labels agree with rule-derived labels in 93.1\% of evaluable cases.
+Across representative metric families, GREEN performs best, reaching AUROC 0.903/0.896 on impression/findings rule labels and 0.814 on human labels.
+In contrast, BERTScore is directionally reversed, falling below random on rule-derived labels (0.221/0.165) and human-derived labels (0.274) because it often penalizes benign rewrites more than meaning-changing edits.
+Edit-type analysis shows that clinical-aware metrics improve over general similarity but retain blind spots, especially for laterality and measurement.
+We recommend sensitivity cards that report invariance to benign rewrites and sensitivity to specific meaning-changing edits.
+\end{abstract}
+
+\section{Introduction}
+
+Automatic radiology report generation (RRG) has become a prominent testbed for clinical natural language generation. Because report text communicates medical findings, an evaluation metric must do more than reward fluent phrasing or lexical overlap: it should be tolerant of harmless rewrites while sensitive to edits that alter the communicated finding. A reference report saying ``No pleural effusion'' and a candidate saying ``No pleural fluid is seen'' should be treated as much closer than a candidate saying ``Pleural effusion is present.'' This distinction is obvious to a reader, but it is not guaranteed by common reference-based metrics.
+
+The field has responded to this problem with increasingly clinical evaluation metrics. Label-based metrics compare extracted findings such as CheXbert labels \citep{smit-etal-2020-chexbert}; graph-based metrics compare entities and relations such as RadGraph \citep{jain-etal-2021-radgraph}; entity-aware metrics such as RaTEScore emphasize diagnostic outcomes and anatomical details \citep{zhao-etal-2024-ratescore}; and LLM-based metrics such as GREEN identify and explain clinically significant report errors \citep{ostmeier-etal-2024-green}. These metrics are important advances over BLEU, ROUGE, or general embedding similarity. Yet a metric can be clinically motivated and still have blind spots: a coarse label metric may ignore laterality, a graph metric may miss measurement changes, and a semantic similarity metric may prefer a factual contradiction over a harmless paraphrase.
+
+This paper studies evaluation metrics as objects of behavioral testing. Rather than proposing another RRG model, we ask: \emph{when a reference report is minimally edited, do automatic metrics penalize meaning-changing edits more than meaning-preserving ones?} We introduce \bench, a controlled reference-anchored benchmark that tests this property directly. We generate minimal-pair candidates from MIMIC-CXR report sections \citep{johnson-etal-2019-mimiccxr}. Some candidates preserve meaning through formatting, sentence order, or paraphrase-like rule edits; others change meaning through negation, laterality, anatomy, severity, uncertainty, temporal comparison, missing findings, false findings, or measurement changes. Each metric is evaluated by the penalty it assigns to a perturbed candidate relative to the identity report.
+
+\begin{figure*}[t]
+\centering
+\IfFileExists{Figure/Fig1_ClinSev.png}{%
+    \includegraphics[width=0.97\textwidth,height=0.34\textheight,keepaspectratio]{Figure/Fig1_ClinSev.png}%
+}{%
+\fbox{%
+\begin{minipage}[c][0.30\textheight][c]{0.94\textwidth}
+\centering\small
+\textbf{\bench system overview.}\par\vspace{0.8em}
+MIMIC-CXR report section $\rightarrow$ controlled minimal-pair generator with \pres and \chg branches $\rightarrow$ blinded human meaning validation $\rightarrow$ metric scoring $\rightarrow$ meaning-change AUROC, benign-over-changed inversion, edit-type blindness, and sensitivity-card reporting. Rule-defined diagnostic strata are used only for metric analysis, not as clinically adjudicated severity labels.
+\end{minipage}%
+}%
+}
+\caption{Overview of \bench. Starting from MIMIC-CXR report sections, we generate controlled \pres and \chg candidates, validate meaning labels with blinded human judgments, and evaluate metrics using meaning-change AUROC, benign-over-changed inversion, edit-type blindness, and sensitivity-card reports. The benchmark is reference-anchored and text-based; radiographs are not used for scoring. Rule-defined diagnostic strata are used only to analyze metric behavior, not to define a clinically adjudicated severity scale.}
+\label{fig:overview}
+\end{figure*}
+
+Our evaluation yields three main findings. First, human annotation validates the intended meaning labels: aggregated human labels agree with our rule-derived labels in 93.1\% of evaluable cases. Second, metric behavior varies sharply. GREEN is strongest, with rule-label AUROC near 0.90 and human-label AUROC 0.814. RaTEScore is the strongest efficient non-LLM metric, with rule-label AUROC 0.768/0.804. In contrast, BERTScore is below random: its penalty often increases for meaning-preserving rewrites more than for meaning-changing perturbations. Third, even clinical metrics exhibit edit-type-specific blind spots. F1CheXbert is nearly blind to laterality and measurement edits; RadGraph reduces some blind spots but still misses many edit-type changes; GREEN and RaTEScore are strongest but still have measurement sensitivity gaps.
+
+Our contributions are:
+\begin{enumerate}[leftmargin=*,noitemsep]
+    \item \textbf{A validated minimal-pair benchmark.} We introduce \bench, a controlled reference-anchored benchmark for testing whether radiology report metrics distinguish \pres from \chg edits, and validate its rule-derived meaning labels with 480 blinded report pairs and 840 human judgments.
+    \item \textbf{A broad metric audit with a directional failure finding.} We audit representative lexical, contextual, label-based, graph-based, entity-aware, temporal, and LLM-based metrics across impression and findings sections, showing that GREEN is strongest while BERTScore is directionally reversed on both rule-derived and human-derived labels.
+    \item \textbf{Diagnostic reporting.} We propose sensitivity cards that report meaning-change AUROC, benign-over-changed inversion, penalty gap, and edit-type blindness as complements to aggregate metric scores.
+\end{enumerate}
+
+\section{Related Work}
+
+\paragraph{Metrics for text generation.}
+Early automatic generation metrics such as BLEU \citep{papineni-etal-2002-bleu} and ROUGE \citep{lin-2004-rouge} measure surface overlap. They are useful for fast comparisons but are known to be brittle under paraphrase and weak proxies for semantic correctness \citep{reiter-belz-2009}. Learned or contextual metrics, including BERTScore \citep{zhang-etal-2020-bertscore} and BLEURT \citep{sellam-etal-2020-bleurt}, attempt to reward semantic similarity beyond exact word overlap. However, factuality work in summarization and generation has repeatedly shown that semantic similarity does not guarantee factual consistency \citep{maynez-etal-2020-faithfulness}. We bring this concern to radiology report evaluation and show that contextual similarity can be not only weak but directionally misleading for report meaning changes.
+
+\paragraph{Radiology report generation metrics.}
+Radiology-specific metrics aim to capture clinical content. CheXbert extracts structured report labels \citep{smit-etal-2020-chexbert}; RadGraph extracts clinical entities and relations \citep{jain-etal-2021-radgraph}; RadGraph-derived metrics and RadCliQ have been studied for progress tracking in chest X-ray RRG \citep{yu-etal-2023-evaluating}. More recent metrics are more specialized: RaTEScore compares medical entities with emphasis on diagnostic outcomes and anatomical details \citep{zhao-etal-2024-ratescore}; GREEN uses language-model reasoning to identify clinically significant errors and produce interpretable explanations \citep{ostmeier-etal-2024-green}; FineRadScore explores severity-aware line-level corrections \citep{huang-etal-2024-fineradscore}; and CREPE predicts multi-category error counts for rapid chest X-ray report evaluation \citep{cho-etal-2025-crepe}. RadEval consolidates many of these metrics into a unified radiology text evaluation framework \citep{xu-etal-2025-radeval}. We do not propose a new metric. Instead, we provide a controlled stress test for asking which metrics actually distinguish harmless report rewrites from meaning-changing edits.
+
+\paragraph{Behavioral and minimal-pair evaluation.}
+Behavioral testing frameworks such as CheckList \citep{ribeiro-etal-2020-beyond} argue that aggregate scores can hide failures on targeted capabilities. Minimal-pair evaluation is also common in linguistic probing and robustness tests because it isolates a factor of interest. \bench adopts this philosophy for \emph{metric meta-evaluation}: the system under test is the evaluation metric, and the targeted capability is invariance to meaning-preserving edits and sensitivity to meaning-changing edits.
+
+
+\section{Benchmark Design}
+
+\paragraph{Design goals.}
+A useful stress test for radiology report metrics should satisfy four desiderata. First, it should be \emph{reference anchored}: the question is not whether a report is correct with respect to an image, but whether a candidate preserves the meaning of a given reference report. This matches how many RRG metrics are used in practice and avoids requiring image re-interpretation for every example. Second, it should be \emph{minimal}: edits should isolate one semantic factor whenever possible, so that a metric failure can be attributed to a recognizable attribute such as negation or laterality rather than to broad distribution shift. Third, it should include both \emph{invariance} and \emph{sensitivity} tests. A metric should be invariant to formatting or sentence-order changes, but sensitive to meaning-changing edits. Fourth, the resulting benchmark should support \emph{metric diagnosis}, not only model ranking. We therefore report AUROC, inversion, penalty gap, and edit-type blindness rather than only average similarity.
+
+These desiderata intentionally differ from those of a new report-generation benchmark. We do not ask a generator to produce reports, nor do we claim that a candidate is clinically correct for the underlying radiograph. Instead, we ask whether automatic metrics can pass a basic behavioral test: when two candidates are anchored to the same reference, does the metric penalize the one that changes the report's meaning?
+
+
+\subsection{Task Definition}
+
+Given a reference radiology report section $x_i$ and a perturbed candidate $\tilde{x}_{i,t}$ generated by edit type $t$, a reference-based metric $m$ returns a score $m(x_i,\tilde{x}_{i,t})$. We are interested in whether the metric ranks \chg edits as worse than \pres edits. We define the metric penalty
+\begin{equation}
+    \Delta_m(i,t) = m(x_i,x_i) - m(x_i,\tilde{x}_{i,t}),
+\end{equation}
+where $m(x_i,x_i)$ is the identity score for the same reference. A metric that respects meaning change should produce small $\Delta_m$ for \pres edits and large $\Delta_m$ for \chg edits.
+Before computing penalties, we orient all metric outputs so that larger values indicate better agreement with the reference. 
+For metrics that natively return error counts or disagreement scores, we convert them to an agreement-oriented score by negating or normalizing the error signal. 
+Thus, throughout the paper, a larger $\Delta_m$ consistently means that the metric assigns a larger penalty to the perturbed candidate.
+Appendix~\ref{app:metric-orientation} reports a metric-orientation audit on the validation set, confirming that penalties are computed from per-reference identity baselines and that the BERTScore reversal is not caused by score orientation.
+
+We deliberately separate \emph{meaning validation} from \emph{clinical risk validation}. Our human annotation asks whether the candidate preserves the meaning of the reference. It does not ask annotators to assign clinical severity or treatment risk. Some perturbation groups are assigned rule-defined diagnostic tiers for stratified analysis, but these tiers are not expert-adjudicated clinical severity labels.
+
+\subsection{Data and Section Filtering}
+
+We use free-text report sections from MIMIC-CXR \citep{johnson-etal-2019-mimiccxr}. We parse impression and findings sections and construct perturbations from a 5k report split. During inspection, we observed that a small fraction of extracted sections contained administrative headings such as \texttt{FINAL REPORT}, \texttt{REASON FOR EXAMINATION}, \texttt{EXAMINATION}, \texttt{INDICATION}, or \texttt{TECHNIQUE}. We remove these reports before the main analysis. This filters 334/5,000 impression reports and 333/5,000 findings reports, yielding 36,488 clean impression pairs and 40,941 clean findings pairs. For computationally expensive metrics, we use balanced clean subsets so that all metrics are compared on the same set of perturbation types.
+
+\subsection{Perturbation Families}
+
+Table~\ref{tab:perturbations} summarizes the perturbation families. The \pres group contains formatting changes, sentence order changes, and rule-based paraphrase-like rewrites. The \chg group contains attribute and finding edits. Negation, laterality, measurement, deletion, and false insertion are especially important because they are frequent clinical communication failure modes and cannot be reduced to surface similarity.
+
+\begin{table*}[t]
+\centering
+\small
+\begin{tabular}{llcl}
+\toprule
+\textbf{Group} & \textbf{Perturbation} & \textbf{Meaning label} & \textbf{Intended contrast} \\
+\midrule
+Identity & identity & preserved & unchanged reference, used as metric baseline \\
+Benign & benign\_format & preserved & punctuation, line break, or formatting change \\
+Benign & benign\_sentence\_order & preserved & sentence order perturbation without factual change \\
+Benign & benign\_paraphrase\_rule & preserved & rule-based equivalent wording change \\
+Attribute & uncertainty\_flip & changed & possible/definite or similar uncertainty shift \\
+Attribute & anatomy\_region\_flip & changed & anatomical region substitution \\
+Attribute & severity\_flip & changed & mild/moderate/severe substitution \\
+Attribute & temporal\_comparison\_flip & changed & stable/increased/decreased comparison change \\
+Core semantic & negation\_flip & changed & absence/presence flip \\
+Core semantic & laterality\_flip & changed & left/right side flip \\
+Core semantic & finding\_deletion & changed & remove a finding statement \\
+Core semantic & false\_finding\_insertion & changed & insert an unsupported finding \\
+Core semantic & measurement\_flip & changed & alter an explicit measurement value or unit \\
+\bottomrule
+\end{tabular}
+\caption{Perturbation types in \bench. The main validated task is \pres vs. \chg discrimination. The group names help analyze behavior, but the rule-defined tiers are not clinical severity annotations.}
+\label{tab:perturbations}
+\end{table*}
+
+\subsection{Rule Application and Quality Control}
+
+Perturbation rules operate on one report section at a time and are applied only when a rule-specific trigger is detected. If no valid trigger is found, the perturbation type is skipped for that report. Each generated candidate changes a single targeted factor whenever possible. Laterality rules swap unilateral mentions such as \emph{left} and \emph{right}, but skip bilateral or ambiguous mentions. Negation rules flip explicit absence/presence constructions while avoiding administrative text and non-finding contexts. Measurement rules alter explicit measurements by modifying either the numeric value or the measurement unit while preserving the surrounding clinical statement whenever possible. Deletion rules remove one finding-bearing sentence, while false-finding insertion adds a templated unsupported finding to the section. We filter administrative headings before the main analysis and use balanced subsets for expensive metrics so that comparisons are not dominated by high-coverage perturbation types.
+
+\subsection{Human Validation Protocol}
+
+We construct a 480-pair blinded validation set balanced across perturbation types and sections. 
+Three graduate-student annotators with medical-AI/NLP experience judge whether the candidate preserves the meaning of the reference using \yes, \no, or \uncertain. 
+None of the annotators is an author or was involved in perturbation-rule design. 
+The annotators are blinded to perturbation type, rule-derived label, diagnostic tier, edit metadata, and metric outputs. 
+The task is limited to text-level meaning preservation, not image-grounded correctness, treatment impact, clinical risk, or radiologist-adjudicated severity.
+
+To estimate inter-annotator agreement, we include a 180-item overlap subset labeled by all three annotators. 
+The remaining items are distributed across annotators, yielding 840 total judgments. 
+For multiply annotated items, we use the majority label; for singly annotated items, we use the blinded annotator's label. 
+Items whose aggregated label is \uncertain are excluded from agreement and AUROC analyses, yielding 467 evaluable pairs.
+
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lr}
+\toprule
+\textbf{Validation statistic} & \textbf{Value} \\
+\midrule
+Items & 480 \\
+Total judgments & 840 \\
+Evaluable non-uncertain items & 467 \\
+Aggregated human-rule agreement & 93.1\% \\
+Wilson 95\% CI & 90.5--95.1\% \\
+Benign human-yes rate & 90.8\% \\
+Changed human-no rate & 93.9\% \\
+Uncertain-majority rate & 2.7\% \\
+Overlap items & 180 \\
+Fleiss $\kappa$ & 0.430 \\
+\bottomrule
+\end{tabular}
+\caption{Blinded validation of meaning-preservation labels. Aggregated human labels strongly support the rule-derived labels, while agreement on the triple-annotated overlap subset is moderate due to ambiguous cases, especially uncertainty edits.}
+\label{tab:human-validation}
+\end{table}
+
+
+\section{Evaluation Diagnostics}
+\label{sec:diagnostics}
+
+\paragraph{Meaning-change AUROC.}
+We classify \chg versus \pres candidates using metric penalty $\Delta_m$ and report AUROC. This is the primary metric diagnostic because it directly asks whether the metric assigns larger drops to changed edits than to preserved edits.
+
+\paragraph{Benign-over-changed inversion.}
+For report $i$, an inversion occurs when at least one benign edit receives a larger penalty than at least one meaning-changing edit anchored to the same reference. This diagnostic captures counterintuitive cases where a metric treats a harmless rewrite as worse than a semantic perturbation.
+
+\paragraph{Edit-type blindness.}
+For each meaning-changing edit type $t$, we compute the fraction of candidates whose penalty is no larger than the median benign penalty. This identifies semantic perturbations that a metric treats as no worse than harmless edits.
+
+\paragraph{Penalty gap.}
+We also report the mean penalty gap between \chg and \pres edits, defined as $\mathbb{E}[\Delta_m \mid \chg] - \mathbb{E}[\Delta_m \mid \pres]$. Positive values indicate that a metric assigns larger average penalties to meaning-changing edits.
+
+\paragraph{Rule-tier sensitivity.}
+We compute Spearman correlation between metric penalty and a rule-defined ordinal tier: benign edits are assigned tier 0, attribute edits tier 1, and core semantic edits tier 2; identity rows are excluded. This analysis is useful for ranking diagnostics but is secondary because the tiers are not clinically adjudicated severity labels.
+
+\section{Experimental Setup}
+
+\paragraph{Metric suite.}
+We evaluate lexical metrics (BLEU, ROUGE-L), contextual similarity (BERTScore), label-based clinical similarity (F1CheXbert), graph-based similarity (RadGraph), entity-aware similarity (RaTEScore), temporal/comparison consistency scoring (Temporal, focused on explicit temporal or comparison cues), and LLM-based error scoring (GREEN). Fast metrics are evaluated on the full clean 5k pair sets. Expensive clinical metrics are evaluated on balanced subsets: subset500 for core metrics, and subset200 for a common broad table including GREEN and RadGraph.
+
+\paragraph{Evaluation sets.}
+For the broad clinical metric comparison, each section has 2,400 non-identity candidates: 600 \pres and 1,800 \chg examples. For human-label AUROC, we use the 467 validation pairs with non-uncertain majority labels. For every metric and candidate, identity rows are included to compute $\Delta_m$.
+
+\paragraph{Implementation.}
+We use RadEval where applicable \citep{xu-etal-2025-radeval}. 
+We use released implementations and default settings for all metrics unless otherwise stated, and we perform no hyperparameter search. 
+All reported AUROC confidence intervals are bootstrap 95\% intervals over candidate pairs. 
+GREEN is substantially slower than the other metrics in our setup, so we run it on the common subset200 and on the 480-pair annotation set. 
+The full experiment required approximately 45 hours wall-clock time under an optimized schedule on two NVIDIA RTX A6000 GPUs, corresponding to approximately 85--90 A6000 GPU-hours, with GREEN accounting for most of the compute budget.
+
+\section{Results}
+
+\subsection{Human Judgments Validate the Meaning Labels}
+
+Table~\ref{tab:human-validation} summarizes the blinded validation results.
+
+
+Aggregated human labels agree with the rule-derived labels in 93.1\% of evaluable cases, with a 2.7\% aggregated-\uncertain rate.
+Benign edits are judged meaning-preserving in 90.8\% of cases, while meaning-changing edits are judged different in 93.9\%.
+Inter-annotator agreement on the triple-annotated overlap subset is moderate, which is expected for a task involving speculative and uncertain language.
+
+A by-type breakdown further supports this pattern. The three benign edit types are judged meaning-preserving in 90.0--92.5\% of evaluable cases, while all meaning-changing edit types have human-rule match rates of at least 90.0\%. 
+The hardest category is uncertainty. Although uncertainty flips that remain evaluable after aggregation still mostly match the rule-derived label, the triple-annotated overlap subset shows that they are intrinsically ambiguous: only 13.3\% are unanimous, and 86.7\% receive at least one \uncertain judgment. 
+We therefore keep uncertainty edits as a challenging diagnostic category and avoid interpreting them as clinical-severity labels. 
+Full by-type counts are reported in Appendix~\ref{app:human}.
+
+\subsection{GREEN Is Strongest, while BERTScore Is Reversed}
+
+Table~\ref{tab:auroc-main} reports meaning-change AUROC from metric penalties.
+
+\begin{table*}[t]
+\centering
+\small
+\begin{tabular}{lccc}
+\toprule
+\textbf{Metric} & \textbf{Rule AUROC} & \textbf{Rule AUROC} & \textbf{Human-label AUROC} \\
+ & \textbf{Impression} & \textbf{Findings} & \textbf{Validation set} \\
+\midrule
+GREEN & \textbf{0.903} [0.892, 0.914] & \textbf{0.896} [0.883, 0.908] & \textbf{0.814} [0.773, 0.858] \\
+RaTEScore & 0.768 [0.744, 0.792] & 0.804 [0.780, 0.828] & 0.725 [0.669, 0.780] \\
+RadGraph & 0.650 [0.623, 0.676] & 0.639 [0.609, 0.666] & 0.587 [0.525, 0.652] \\
+Temporal & 0.613 [0.604, 0.623] & 0.609 [0.600, 0.619] & 0.584 [0.559, 0.610] \\
+F1CheXbert & 0.572 [0.561, 0.583] & 0.581 [0.570, 0.592] & 0.570 [0.541, 0.599] \\
+BERTScore & 0.221 [0.203, 0.240] & 0.165 [0.149, 0.181] & 0.274 [0.227, 0.326] \\
+\bottomrule
+\end{tabular}
+\caption{AUROC for detecting \chg edits from metric penalties. Rule AUROC is computed on clean subset200 for each section. Human-label AUROC uses the 467 validation pairs after excluding items with aggregated \uncertain labels.}
+\label{tab:auroc-main}
+\end{table*}
+
+Figure~\ref{fig:auroc} visualizes the same rule-label AUROC pattern.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.70\textwidth]{Figure/Fig2_ClinSev.png}
+\caption{Meaning-change detection by metric. GREEN and RaTEScore best distinguish \chg from \pres edits, while BERTScore falls below the 0.5 random baseline. Error bars show bootstrap 95\% confidence intervals.}
+\label{fig:auroc}
+\end{figure*}
+
+GREEN is the strongest metric, reaching 0.903 on impression, 0.896 on findings, and 0.814 on human labels.
+RaTEScore is the strongest efficient non-LLM metric, with 0.768/0.804 on rule-labeled impression/findings subsets and 0.725 on human labels.
+RadGraph, Temporal, and F1CheXbert are only modestly above random.
+BERTScore is below random in all three settings, indicating a directional reversal rather than simple weakness.
+
+On the rule-labeled broad subsets, BERTScore's mean penalty for \pres edits is 0.058 on impression and 0.057 on findings, while its mean penalty for \chg edits is only 0.043 and 0.025.
+On aggregated human labels, BERTScore again penalizes preserved pairs more than changed pairs on average.
+Thus, the metric often treats harmless rewrites as worse than compact semantic perturbations.
+
+\subsection{Metrics Have Edit-Type-Specific Blind Spots}
+
+Figure~\ref{fig:blindness} shows edit-type blindness across impression and findings sections.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.92\textwidth]{Figure/Fig3_ClinSev_combined.png}
+\caption{Edit-type blindness rates for impression and findings sections. Lower is better. A metric is blind to a meaning-changing edit when its penalty is no larger than the median benign penalty. BERTScore and F1CheXbert show severe blind spots for laterality and measurement, while GREEN and RaTEScore substantially reduce but do not eliminate blindness, especially for measurement edits.}
+\label{fig:blindness}
+\end{figure*}
+
+Aggregate AUROC hides qualitatively different failure modes.
+BERTScore and F1CheXbert are severely blind to laterality and measurement changes.
+RadGraph improves over coarse label matching but still misses many laterality and measurement edits.
+GREEN and RaTEScore reduce most blind spots, but both retain non-negligible measurement blindness.
+Together with the inversion and penalty-gap statistics in Appendices~\ref{app:lightweight} and~\ref{app:corecards}, these blind-spot profiles complete the sensitivity-card view introduced in Section~\ref{sec:diagnostics}: a metric should not be summarized as clinically sensitive without specifying which edit types it detects.
+
+\subsection{Qualitative Examples Illustrate the Failure Modes}
+
+Table~\ref{tab:qualitative} shows representative cases behind the aggregate diagnostics.
+
+\begin{table*}[t]
+\centering
+\scriptsize
+\renewcommand{\arraystretch}{0.92}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{p{0.18\textwidth}p{0.28\textwidth}p{0.28\textwidth}p{0.20\textwidth}}
+\toprule
+\textbf{Failure mode} & \textbf{Reference} & \textbf{Candidate} & \textbf{Metric behavior} \\
+\midrule
+BERTScore reversal &
+Heart size and mediastinum are stable. Mild vascular congestion is present. No pneumothorax is seen. No focal consolidation to suggest infection. &
+\textit{Preserved:} - Heart size and mediastinum are stable. - Mild vascular congestion is present. - No pneumothorax is seen. - No focal consolidation to suggest infection. 
+\newline \textit{Changed counterpart:} Heart size and mediastinum are stable. Severe vascular congestion is present. No pneumothorax is seen. No focal consolidation to suggest infection. &
+BERTScore assigns a larger penalty to the preserved edit ($\Delta=0.115$) than to the changed edit ($\Delta=0.006$) from the same reference. \\
+\midrule
+Coarse label blind spot &
+Endotracheal tube terminates approximately 4.7 cm above the level of the carina. &
+Endotracheal tube terminates approximately 4.7 mm above the level of the carina. &
+F1CheXbert assigns no penalty ($\Delta=0.000$), while RadGraph, RaTEScore, and GREEN assign larger penalties ($\Delta=0.429$, 0.418, 1.000). \\
+\midrule
+Clinical-aware detection &
+Trace left pleural effusion, new from prior. &
+No acute cardiopulmonary abnormality. &
+GREEN and RaTEScore assign substantial penalties (GREEN $\Delta=1.000$; RaTEScore $\Delta=0.842$). \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\caption{Representative qualitative examples. The examples illustrate BERTScore reversal, coarse label blindness to measurement changes, and stronger penalties from clinical-aware metrics for meaning-changing edits.}
+\label{tab:qualitative}
+\end{table*}
+
+The examples illustrate three recurring patterns: contextual similarity can over-penalize benign rewrites, coarse clinical labels can miss measurement changes, and stronger clinical-aware metrics assign larger penalties to meaning-changing perturbations.
+
+
+\section{Discussion}
+
+\paragraph{Metric reporting should include behavioral diagnostics.}
+Our results show that aggregate report-level similarity is insufficient for characterizing radiology report metrics. Metrics with similar average behavior can fail on different semantic attributes: coarse label-based metrics are relatively stable under benign rewrites but miss laterality and measurement changes, while contextual similarity can be directionally misleading by penalizing benign rewrites more than compact semantic perturbations. We therefore recommend reporting sensitivity cards alongside aggregate metric scores.
+
+\paragraph{What should a sensitivity card contain?}
+A minimal sensitivity card should report meaning-change AUROC, benign-over-changed inversion, and edit-type blindness for clinically important perturbation types such as negation, laterality, finding deletion, false finding insertion, and measurement changes. These diagnostics make metric behavior interpretable: a metric that is strong on negation and deletion but blind to measurements should not be summarized simply as clinically sensitive.
+
+\paragraph{Cost and practicality.}
+GREEN is strongest but substantially more expensive than non-LLM metrics; in our setup the full experiment used about 85--90 A6000 GPU-hours, mostly due to GREEN. Sensitivity-card profiles can therefore help select lower-cost metrics when an expensive LLM evaluator is unnecessary.
+
+\paragraph{Scope of validation.}
+\bench validates a text-level semantic property: whether a candidate report preserves the stated meaning of a reference report. This scope is intentional. The rule-defined strata support diagnostic analysis of metric behavior, but they should not be interpreted as expert-adjudicated clinical risk or patient-safety severity. Image-grounded correctness and clinical risk assessment require radiologist adjudication and access to the underlying study context.
+
+\section{Conclusion}
+
+We introduced \bench, a controlled minimal-pair benchmark for stress-testing radiology report metrics. Human annotation validates that our perturbation rules largely separate meaning-preserving from meaning-changing report pairs. Across a broad metric suite, we find that clinical-aware metrics such as GREEN and RaTEScore substantially improve meaning-change detection, while general semantic metrics such as BERTScore can be misleading. Edit-type-specific blind spots persist even among clinical metrics, motivating sensitivity cards for transparent radiology report metric reporting.
+
+More broadly, our results suggest that evaluation progress in clinical text generation should not be summarized by a single scalar score. Metrics should be accompanied by evidence about their invariances and sensitivities, especially for attributes such as negation, laterality, omissions, false findings, and measurements. \bench provides one protocol for producing such evidence and can be extended with expert-adjudicated clinical categories.
+
+\section*{Limitations}
+
+\bench is a reference-anchored text evaluation benchmark. It does not determine whether a report is correct with respect to the underlying image. Our human annotation validates meaning preservation between two report texts, not clinical risk, patient safety impact, or radiologist-adjudicated severity. Rule-defined strata should therefore be interpreted only as diagnostic strata. Our perturbations are controlled and may not cover the full distribution of errors made by report generation systems. Some perturbations, especially uncertainty flips, are intrinsically ambiguous and produce moderate annotator agreement. Finally, GREEN is computationally expensive in our setup, so some comparisons are run on balanced subsets rather than the full clean benchmark.
+
+\section*{Ethical Considerations}
+
+This work uses de-identified MIMIC-CXR reports and studies automatic evaluation metrics, not clinical decision-making systems. The benchmark should not be used to certify safety of report generation models. A metric that performs well on \bench may still fail in image-grounded diagnostic evaluation, under distribution shift, or in patient-specific clinical contexts. Any deployment of RRG systems requires expert clinical oversight.
+
+\paragraph{Data access and release.}
+MIMIC-CXR is de-identified and available under credentialed-access data-use terms; we do not attempt re-identification. We will release only perturbation rules, evaluation scripts, aggregate outputs, and reconstruction metadata for credentialed users under source access conditions and the repository license, not raw report text.
+
+
+\clearpage
+\bibliography{References/2_References_ClinSev}
+
+
+\clearpage
+\appendix
+
+\section*{Appendix}
+
+This appendix provides supplementary material for \bench. 
+Appendix~\ref{app:coverage} reports benchmark coverage. 
+Appendix~\ref{app:lightweight} reports full clean lightweight metric results. 
+Appendix~\ref{app:corecards} reports additional clinical metric cards. 
+Appendix~\ref{app:metric-orientation} audits metric orientation and identity baselines.
+Appendix~\ref{app:human} reports human annotation details. 
+Appendix~\ref{app:repro} reports reproducibility details, including package versions and compute budget.
+The main paper is self-contained and does not require consulting the appendix to understand the central claims.
+
+\section{Benchmark Coverage}
+\label{app:coverage}
+
+After filtering administrative headings, we obtain 36,488 impression pairs and 40,941 findings pairs. 
+The clean subset500 contains 8,934 rows from 3,112 reports for impression and 9,183 rows from 3,218 reports for findings. 
+The clean subset200 contains 4,141 impression rows and 4,127 findings rows. 
+Table~\ref{tab:coverage-initial} reports the initial perturbation coverage before filtering.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{adjustbox}{max width=\columnwidth}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Perturbation} & \textbf{Imp. count} & \textbf{Find. count} \\
+\midrule
+identity & 5,000 & 5,000 \\
+benign\_format & 5,000 & 5,000 \\
+false\_finding\_insertion & 5,000 & 5,000 \\
+benign\_sentence\_order & 3,385 & 4,631 \\
+negation\_flip & 3,880 & 4,262 \\
+laterality\_flip & 3,509 & 3,945 \\
+finding\_deletion & 3,360 & 3,449 \\
+uncertainty\_flip & 3,306 & 3,401 \\
+severity\_flip & 2,439 & 2,853 \\
+temporal\_comparison\_flip & 2,192 & 2,874 \\
+anatomy\_region\_flip & 1,344 & 1,539 \\
+benign\_paraphrase\_rule & 838 & 1,600 \\
+measurement\_flip & 366 & 509 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\caption{Initial 5k perturbation coverage before filtering administrative headings. Imp. and Find. denote impression and findings sections.}
+\label{tab:coverage-initial}
+\end{table}
+
+Measurement edits have the lowest initial coverage because explicit numeric measurements are less frequent than negation, laterality, or finding-level statements. 
+We therefore treat measurement as an important but lower-coverage diagnostic type rather than as a uniformly available perturbation.
+
+\section{Full Clean Lightweight Metrics}
+\label{app:lightweight}
+
+Table~\ref{tab:full-lightweight} reports the full clean 5k lightweight results. 
+These results support the main paper's claim that surface-overlap metrics are unreliable under controlled report perturbations. 
+BLEU and ROUGE-L frequently penalize benign rewrites more than meaning-changing edits, especially in findings sections.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2pt}
+\begin{adjustbox}{max width=\columnwidth}
+\begin{tabular}{llrrrrr}
+\toprule
+\textbf{Sec.} & \textbf{Metric} & \textbf{Spear.} & \textbf{Pair.} & \textbf{Inv.} & \textbf{Gap} & \textbf{Blind.} \\
+\midrule
+Imp. & token\_f1 & 0.769 & 0.849 & 0.036 & 0.116 & 0.000 \\
+Imp. & jaccard & 0.717 & 0.813 & 0.031 & 0.158 & 0.068 \\
+Imp. & clinical\_entity\_f1 & 0.652 & 0.684 & 0.000 & 0.249 & 0.429 \\
+Imp. & clinical\_negation\_match & 0.618 & 0.460 & 0.021 & 0.397 & 0.478 \\
+Imp. & clinical\_attribute\_f1 & 0.480 & 0.530 & 0.000 & 0.276 & 0.333 \\
+Imp. & ROUGE-L & 0.380 & 0.673 & 0.391 & -0.011 & 0.238 \\
+Imp. & BLEU & 0.230 & 0.579 & 0.489 & 0.068 & 0.574 \\
+\midrule
+Find. & token\_f1 & 0.822 & 0.849 & 0.046 & 0.066 & 0.000 \\
+Find. & jaccard & 0.772 & 0.810 & 0.026 & 0.097 & 0.086 \\
+Find. & clinical\_entity\_f1 & 0.641 & 0.675 & 0.000 & 0.165 & 0.441 \\
+Find. & clinical\_negation\_match & 0.572 & 0.425 & 0.024 & 0.306 & 0.498 \\
+Find. & clinical\_attribute\_f1 & 0.478 & 0.527 & 0.000 & 0.201 & 0.355 \\
+Find. & ROUGE-L & 0.312 & 0.640 & 0.452 & -0.089 & 0.361 \\
+Find. & BLEU & 0.134 & 0.543 & 0.538 & 0.014 & 0.613 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\caption{Full clean 5k lightweight results. ROUGE-L and BLEU show high benign-over-changed inversion, especially in findings. Spear., Pair., Inv., Gap, and Blind. denote Spearman correlation, pairwise accuracy, benign-over-changed inversion, mean changed-minus-preserved penalty gap, and edit-type blindness.}
+\label{tab:full-lightweight}
+\end{table}
+
+Token F1 and Jaccard perform better on this controlled minimal-pair setting, but this should not be interpreted as evidence that lexical overlap is sufficient for open-ended radiology report generation evaluation. 
+These metrics benefit from the benchmark construction because many controlled edits introduce explicit token changes. 
+Thus, the lightweight results are best interpreted as stress-test diagnostics rather than as a recommendation to replace clinical metrics with lexical overlap scores.
+
+\section{Core Clinical Metric Cards}
+\label{app:corecards}
+
+Table~\ref{tab:subset500-core} shows that the broad result pattern is not limited to the subset200 comparison. 
+RaTEScore remains the strongest efficient clinical metric in the subset500 setting, while BERTScore shows high inversion and high blindness. 
+F1CheXbert and Temporal have low inversion but high blindness, indicating that they often fail to assign meaningful penalties to several meaning-changing edit types.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2pt}
+\begin{adjustbox}{max width=\columnwidth}
+\begin{tabular}{llrrrrr}
+\toprule
+\textbf{Sec.} & \textbf{Metric} & \textbf{Spear.} & \textbf{Pair.} & \textbf{Inv.} & \textbf{Gap} & \textbf{Blind.} \\
+\midrule
+Imp. & Temporal & 0.427 & 0.321 & 0.000 & 0.119 & 0.798 \\
+Imp. & F1CheXbert & 0.408 & 0.266 & 0.017 & 0.070 & 0.700 \\
+Imp. & RaTEScore & 0.389 & 0.669 & 0.209 & 0.066 & 0.087 \\
+Imp. & BERTScore & -0.067 & 0.480 & 0.598 & 0.012 & 0.698 \\
+\midrule
+Find. & Temporal & 0.399 & 0.301 & 0.000 & 0.088 & 0.798 \\
+Find. & RaTEScore & 0.399 & 0.676 & 0.214 & 0.035 & 0.086 \\
+Find. & F1CheXbert & 0.398 & 0.275 & 0.019 & 0.070 & 0.672 \\
+Find. & BERTScore & -0.161 & 0.424 & 0.733 & -0.017 & 0.796 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\caption{Clean subset500 core metric sensitivity cards. GREEN and RadGraph are excluded from this subset500 card because they were evaluated in the common subset200 setting; their AUROC results are reported in Table~\ref{tab:auroc-main}, and their edit-type blindness profiles are shown in Figure~\ref{fig:blindness}. Spear., Pair., Inv., Gap, and Blind. denote Spearman correlation, pairwise accuracy, benign-over-changed inversion, mean changed-minus-preserved penalty gap, and edit-type blindness.}
+\label{tab:subset500-core}
+\end{table}
+
+\section{Metric Orientation Audit}
+\label{app:metric-orientation}
+
+All metric outputs are oriented so that larger values indicate better agreement with the reference before computing $\Delta_m$.
+Table~\ref{tab:metric-orientation-audit} audits this orientation on the validation metric set.
+Identity means are 1.000 for all metrics, although some metrics can assign sub-perfect identity scores; penalties are computed relative to each metric's identity score for the same reference.
+This per-reference identity baseline is useful because some metrics, especially LLM-based scores, can assign slightly imperfect scores even to identity pairs.
+This audit uses 470 validation pairs for which metric scores are available. The human-label AUROC in Table~\ref{tab:auroc-main} uses the 467-pair subset after excluding items with aggregated \uncertain labels.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2pt}
+\begin{adjustbox}{max width=\columnwidth}
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Metric} & \textbf{n} & \textbf{Id. mean} & \textbf{Id. min} & \textbf{Pres. $\Delta$} & \textbf{Chg. $\Delta$} \\
+\midrule
+BERTScore & 470 & 1.000 & 1.000 & 0.0588 & 0.0333 \\
+F1CheXbert & 470 & 1.000 & 1.000 & 0.0067 & 0.0439 \\
+RaTEScore & 470 & 1.000 & 0.995 & 0.0198 & 0.0617 \\
+Temporal & 470 & 1.000 & 1.000 & 0.0000 & 0.0993 \\
+RadGraph & 470 & 1.000 & 1.000 & 0.0862 & 0.1148 \\
+GREEN & 470 & 1.000 & 0.800 & 0.0156 & 0.1976 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\caption{Metric orientation audit on the validation metric set. Scores are oriented so that larger values indicate better agreement with the reference before computing $\Delta_m$. BERTScore assigns a larger mean penalty to preserved edits than to changed edits, confirming that its reversal is not caused by score orientation.}
+\label{tab:metric-orientation-audit}
+\end{table}
+\FloatBarrier
+
+
+\section{Human Annotation Details}
+\label{app:human}
+
+\paragraph{Annotator background.}
+The annotators were three graduate students with experience in medical-AI/NLP research. 
+They were not authors of the paper and were not involved in perturbation-rule design or metric scoring.
+No public crowdsourcing platform was used.
+
+Table~\ref{tab:annotation-by-type} breaks down aggregated human labels by perturbation type after excluding items with aggregated \uncertain labels. 
+Benign edits are usually judged meaning-preserving, while changed edits are usually judged different.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2pt}
+\begin{adjustbox}{max width=\columnwidth}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Perturbation} & \textbf{n} & \textbf{Rule yes} & \textbf{Human yes} & \textbf{Match} \\
+\midrule
+anatomy\_region\_flip & 39 & 0.00 & 0.051 & 0.949 \\
+benign\_format & 40 & 1.00 & 0.900 & 0.900 \\
+benign\_paraphrase\_rule & 40 & 1.00 & 0.900 & 0.900 \\
+benign\_sentence\_order & 40 & 1.00 & 0.925 & 0.925 \\
+false\_finding\_insertion & 40 & 0.00 & 0.050 & 0.950 \\
+finding\_deletion & 40 & 0.00 & 0.050 & 0.950 \\
+laterality\_flip & 40 & 0.00 & 0.075 & 0.925 \\
+measurement\_flip & 40 & 0.00 & 0.075 & 0.925 \\
+negation\_flip & 40 & 0.00 & 0.050 & 0.950 \\
+severity\_flip & 40 & 0.00 & 0.100 & 0.900 \\
+temporal\_comparison\_flip & 39 & 0.00 & 0.026 & 0.974 \\
+uncertainty\_flip & 29 & 0.00 & 0.069 & 0.931 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\caption{Aggregated human labels by perturbation type after excluding items with aggregated \uncertain labels. Match denotes agreement between the aggregated human label and the rule-derived meaning label.}
+\label{tab:annotation-by-type}
+\end{table}
+
+Table~\ref{tab:pairwise-agreement} shows that annotator agreement on the 180-item overlap subset is moderate rather than high. 
+This is important for interpretation: the benchmark validates the main meaning-preservation distinction, but it should not be framed as expert-adjudicated clinical severity validation.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\begin{tabular}{lrr}
+\toprule
+\textbf{Annotator pair} & \textbf{Raw agreement} & \textbf{Cohen $\kappa$} \\
+\midrule
+A--B & 0.806 & 0.558 \\
+A--C & 0.750 & 0.406 \\
+B--C & 0.694 & 0.336 \\
+\bottomrule
+\end{tabular}
+\caption{Pairwise agreement on the 180-item overlap subset.}
+\label{tab:pairwise-agreement}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Subset} & \textbf{n} & \textbf{Unanimous rate} & \textbf{Uncertain-any rate} \\
+\midrule
+All overlap items & 180 & 0.628 & 0.078 \\
+Uncertainty flips & 15 & 0.133 & 0.867 \\
+\bottomrule
+\end{tabular}
+\caption{Overlap-set ambiguity for uncertainty edits. Uncertainty flips are frequently non-unanimous and often receive at least one \uncertain judgment, supporting their interpretation as an intrinsically ambiguous stress case.}
+\label{tab:uncertainty-overlap}
+\end{table}
+
+\paragraph{Annotation instructions.}
+Annotators were shown a reference report section and a candidate report section. They were instructed to answer \yes if the candidate preserved the same stated meaning as the reference, \no if it changed the stated meaning, and \uncertain if the meaning relationship could not be determined from the text alone. They were explicitly instructed not to judge image-grounded correctness, treatment impact, patient risk, or clinical severity.
+
+\paragraph{Annotator recruitment and compensation.}
+The annotators were recruited from graduate students with medical-AI/NLP experience. No public crowdsourcing platform was used. Annotation was conducted as an internal research task; no public crowdsourcing payment was involved.
+
+\paragraph{Consent and use of annotations.}
+Annotators were informed that their blinded judgments would be used for research on radiology report metric evaluation. The annotation task did not collect sensitive personal information about annotators.
+
+
+\section{Reproducibility Details}
+\label{app:repro}
+
+Experiments were run in Python 3.11.15 on Linux. 
+The main package versions were: PyTorch 2.2.2, Transformers 4.40.0, Datasets 3.2.0, Pandas 3.0.3, NumPy 1.26.4, SciPy 1.17.1, scikit-learn 1.8.0, Matplotlib 3.10.9, bert-score 0.3.13, sentence-transformers 3.0.1, RadEval 2.2.1, and green-score 0.0.12. 
+The primary GPU hardware was NVIDIA RTX A6000. 
+Under an optimized two-GPU schedule, the full experiment required approximately 45 hours wall-clock time and approximately 85--90 A6000 GPU-hours.
+
+\end{document}

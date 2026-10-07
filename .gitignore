@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+envs/
+logs/
+*.log
+# MIMIC-CXR derived data must never be committed (PhysioNet)
+data/corpus/mimic_sections.csv
+data/pairs/*mimic*
+results/*/scores/
+results/*/judges/
+paper/*.aux
+paper/*.blg
+paper/*.bbl
+paper/*.out

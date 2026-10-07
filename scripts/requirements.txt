@@ -1,0 +1,17 @@
+# ---- env "clinsev" (metric scoring / analysis), python 3.11
+torch==2.2.2            # +cu121
+transformers==4.40.0
+radeval==2.2.1
+bert-score==0.3.13
+green_score==0.0.12     # editable install from the GREEN repo (OLD/ClinSevBench_v2/GREEN)
+sacrebleu==2.6.0
+rouge_score==0.1.2
+nltk==3.9.4
+numpy==1.26.4
+pandas==3.0.3
+scipy==1.17.1
+scikit-learn==1.8.0
+openpyxl
+# ---- env "llm" (vLLM: paraphrase, judges, CRIMSON, statsmodels analyses), python 3.12
+# vllm==0.30.0, torch==2.13.0 (cu130), transformers==5.18.0, openai==3.22.1, anthropic==1.10.0, openai-harmony==0.0.8, statsmodels
+# plus conda: gcc_linux-64 gxx_linux-64 (no system compiler); see scripts/env_llm.sh

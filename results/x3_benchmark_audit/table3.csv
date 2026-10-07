@@ -1,0 +1,12 @@
+benchmark,n,surface_only_LR_auroc,jaccard_drop_auroc,edit_tokens_auroc,strongest_single_feature,direction
+"ClinSemBench v1 (impression, rule labels)",2400,0.9165472222222222,0.8493055555555554,0.18613009259259258,jaccard_drop=0.849,larger surface change => benign
+"ClinSemBench v1 (findings, rule labels)",2400,0.9638166666666665,0.8898074074074074,0.15600833333333336,jaccard_drop=0.890,larger surface change => benign
+"ClinSemBench v1 (480-pair set, human labels)",467,0.8271627482309974,0.8109564026477973,0.23839306094498972,jaccard_drop=0.811,larger surface change => benign
+factorial IU — confound v1-type (C0 vs P1),1780,0.9999936876656987,0.5864455245549804,0.0006848882716828735,char_ratio_drop=0.000,larger surface change => benign
+factorial IU — confound ReEvalMed-type (C0 vs P2),1780,0.9832199217270546,0.05329693220552961,0.01741762403736903,edit_tokens=0.017,larger surface change => benign
+factorial IU — controlled S0 (C0 vs P0),1780,0.6426827420780205,0.5864455245549804,0.5078108824643354,tokenf1_drop=0.588,≈ none
+factorial IU — controlled S2 (C2 vs P2),1780,0.539566973866936,0.5206552203004671,0.5012713041282667,tokenf1_drop=0.521,≈ none
+factorial MIMIC — confound v1-type (C0 vs P1),2100,0.9999836734693878,0.5575727891156462,0.00017142857142857015,char_ratio_drop=0.000,larger surface change => benign
+factorial MIMIC — confound ReEvalMed-type (C0 vs P2),2100,0.9957886621315193,0.011328344671201813,0.0045637188208616855,char_ratio_drop=0.003,larger surface change => benign
+factorial MIMIC — controlled S0 (C0 vs P0),2100,0.6220897959183673,0.5575727891156462,0.5075886621315193,tokenf1_drop=0.568,≈ none
+factorial MIMIC — controlled S2 (C2 vs P2),2100,0.522930612244898,0.5131936507936508,0.5009718820861678,tokenf1_drop=0.515,≈ none

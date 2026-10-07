@@ -1,0 +1,16 @@
+\begin{tabular}{lcccccccc}
+\toprule
+ & \multicolumn{4}{c}{\textbf{IU X-Ray}} & \multicolumn{4}{c}{\textbf{MIMIC-CXR}} \\
+\cmidrule(lr){2-5}\cmidrule(lr){6-9}
+ & \multicolumn{2}{c}{P0 false alarm $\downarrow$} & \multicolumn{2}{c}{C2 detection $\uparrow$} & \multicolumn{2}{c}{P0 false alarm $\downarrow$} & \multicolumn{2}{c}{C2 detection $\uparrow$} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}
+\textbf{Judge} & Meas. & Sev. & Unc. & Lat. & Meas. & Sev. & Unc. & Lat. \\
+\midrule
+Llama-3.1-8B & 0.84 & 0.14 & 0.37 & 0.58 & 0.48 & 0.13 & 0.40 & 0.55 \\
+Gemma-3-27B & 0.87 & 0.34 & 0.34 & 0.73 & 0.85 & 0.54 & 0.39 & 0.71 \\
+Qwen3-32B & 0.27 & 0.20 & 0.29 & 0.84 & 0.96 & 0.32 & 0.37 & 0.84 \\
+Qwen3-32B (thinking) & 0.13 & 0.04 & 0.68 & 0.99 & 0.33 & 0.07 & 0.87 & 1.00 \\
+gpt-oss-20b & 0.01 & 0.12 & 0.78 & 0.94 & 0.04 & 0.12 & 0.79 & 0.99 \\
+gpt-oss-120b & 0.41 & 0.06 & 0.76 & 1.00 & 0.29 & 0.08 & 0.90 & 0.99 \\
+\bottomrule
+\end{tabular}

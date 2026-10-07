@@ -1,0 +1,18 @@
+\begin{tabular}{lllccccccc}
+\toprule
+ & & & \multicolumn{2}{c}{\textbf{Measurement}} & \multicolumn{3}{c}{\textbf{All types}} & \multicolumn{2}{c}{\textbf{Paired acc.}} \\
+\cmidrule(lr){4-5}\cmidrule(lr){6-8}\cmidrule(lr){9-10}
+\textbf{Corpus} & \textbf{Judge} & \textbf{Prompt} & P0 value $\downarrow$ & C0 $\uparrow$ & P0 other $\downarrow$ & C0 $\uparrow$ & C2 $\uparrow$ & \textsc{Ctrl-0} & \textsc{Ctrl-2} \\
+\midrule
+IU & Gemma-3-27B & rubric & 0.91 & 1.00 & 0.14 & 0.93 & 0.84 & 0.92 & 0.93 \\
+IU & Gemma-3-27B & rubric-unit & 0.16 & 0.83 & 0.10 & 0.90 & 0.82 & 0.94 & 0.93 \\
+IU & Llama-3.1-8B & rubric & 0.87 & 0.97 & 0.09 & 0.69 & 0.71 & 0.78 & 0.75 \\
+IU & Llama-3.1-8B & rubric-unit & 0.51 & 0.80 & 0.05 & 0.59 & 0.58 & 0.76 & 0.74 \\
+IU & Qwen3-32B & rubric & 0.16 & 0.88 & 0.09 & 0.93 & 0.83 & 0.93 & 0.91 \\
+IU & Qwen3-32B & rubric-unit & 0.07 & 0.80 & 0.08 & 0.92 & 0.83 & 0.92 & 0.92 \\
+MIMIC & Gemma-3-27B & rubric & 0.84 & 0.99 & 0.20 & 0.94 & 0.81 & 0.90 & 0.91 \\
+MIMIC & Gemma-3-27B & rubric-unit & 0.11 & 0.81 & 0.16 & 0.90 & 0.77 & 0.92 & 0.92 \\
+MIMIC & Qwen3-32B & rubric & 0.95 & 0.99 & 0.14 & 0.94 & 0.82 & 0.87 & 0.89 \\
+MIMIC & Qwen3-32B & rubric-unit & 0.59 & 0.95 & 0.12 & 0.93 & 0.80 & 0.88 & 0.88 \\
+\bottomrule
+\end{tabular}
